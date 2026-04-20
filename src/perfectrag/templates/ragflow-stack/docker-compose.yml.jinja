@@ -1,0 +1,90 @@
+name: {{ project_name }}
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports: ["9200:9200"]
+    volumes:
+      - ./volumes/es:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null"]
+      interval: 10s
+      retries: 30
+
+  mysql:
+    image: mysql:8.0.39
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=rag_flow
+    ports: ["3306:3306"]
+    volumes:
+      - ./volumes/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    volumes:
+      - ./volumes/redis:/data
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./volumes/minio:/data
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports: ["11434:11434"]
+    volumes:
+      - ./volumes/ollama:/root/.ollama
+{%- if recipe.gpu_enabled and hw.gpu_vendor == 'nvidia' %}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+{%- endif %}
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on: [ollama]
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "sleep 10 && \
+       OLLAMA_HOST=ollama:11434 ollama pull {{ recipe.llm_model }} && \
+       OLLAMA_HOST=ollama:11434 ollama pull nomic-embed-text"
+    restart: "no"
+
+  ragflow:
+    image: infiniflow/ragflow:v0.17.2
+    depends_on:
+      elasticsearch: { condition: service_healthy }
+      mysql:         { condition: service_healthy }
+      redis:         { condition: service_started }
+      minio:         { condition: service_started }
+      ollama:        { condition: service_started }
+    env_file: .env
+    ports:
+      - "80:80"
+      - "9380:9380"
+    volumes:
+      - ./volumes/ragflow/logs:/ragflow/logs
+      - ./skills:/ragflow/skills:ro
+      - ./mcp.yaml:/ragflow/mcp.yaml:ro

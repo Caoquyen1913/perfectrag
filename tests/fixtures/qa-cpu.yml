@@ -1,0 +1,7 @@
+use_case: qa_docs
+modality:
+  - text
+privacy: fully_local
+multi_hop: false
+corpus_size: small
+user_scale: solo

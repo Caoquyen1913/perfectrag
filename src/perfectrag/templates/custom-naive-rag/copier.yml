@@ -1,0 +1,14 @@
+_templates_suffix: .jinja
+_envops:
+  keep_trailing_newline: true
+_answers_file: .copier-answers.yml
+_exclude:
+  - copier.yml
+  - __init__.py
+
+# These are populated by perfectrag CLI via `data=`; left here for documentation
+# so users can `copier update` directly if they want.
+project_name:
+  type: str
+  default: my-rag
+  help: Project name

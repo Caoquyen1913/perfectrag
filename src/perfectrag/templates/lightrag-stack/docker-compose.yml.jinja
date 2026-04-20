@@ -1,0 +1,54 @@
+name: {{ project_name }}
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports: ["11434:11434"]
+    volumes:
+      - ./volumes/ollama:/root/.ollama
+{%- if recipe.gpu_enabled and hw.gpu_vendor == 'nvidia' %}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+{%- endif %}
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on: [ollama]
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "sleep 10 && \
+       OLLAMA_HOST=ollama:11434 ollama pull {{ recipe.llm_model }} && \
+       OLLAMA_HOST=ollama:11434 ollama pull nomic-embed-text"
+    restart: "no"
+
+  lightrag:
+    image: ghcr.io/hkuds/lightrag:latest
+    restart: unless-stopped
+    depends_on: [ollama]
+    ports:
+      - "9621:9621"   # LightRAG WebUI + API
+    env_file: .env
+    volumes:
+      - ./rag_storage:/app/data/rag_storage
+      - ./inputs:/app/data/inputs
+      - ./skills:/app/skills:ro
+      - ./mcp.yaml:/app/mcp.yaml:ro
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    depends_on: [ollama, lightrag]
+    ports: ["3000:8080"]
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_AUTH=false
+      # Route RAG queries to LightRAG's OpenAI-compatible endpoint
+      - RAG_OPENAI_API_BASE_URL=http://lightrag:9621/api/chat
+    volumes:
+      - ./volumes/open-webui:/app/backend/data

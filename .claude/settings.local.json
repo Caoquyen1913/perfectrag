@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(curl -s https://api.github.com/repos/infiniflow/ragflow)",
+      "Bash(curl -s https://api.github.com/repos/Mintplex-Labs/anything-llm)",
+      "Bash(curl -s https://api.github.com/repos/langgenius/dify)",
+      "Bash(curl -s https://api.github.com/repos/deepset-ai/haystack)",
+      "Bash(curl -s https://api.github.com/repos/SciPhi-AI/R2R)",
+      "Bash(curl -s https://api.github.com/repos/roychowdhuryrohit-dev/khoj)",
+      "Bash(curl -s https://api.github.com/repos/Cinnamon/kotaemo)",
+      "Bash(curl -s https://api.github.com/repos/HKUDS/LightRAG)",
+      "Bash(curl -s https://api.github.com/repos/gusye1234/nano-graphrag)",
+      "Bash(curl -s https://api.github.com/repos/netease-youdao/QAnything)",
+      "Bash(curl -s https://api.github.com/repos/weaviate/Verba)",
+      "Bash(curl -s https://api.github.com/repos/microsoft/graphrag)",
+      "Bash(curl -s https://api.github.com/repos/langchain-ai/langchain)",
+      "Bash(curl -s https://api.github.com/repos/infiniflow/ragflow/license)",
+      "Bash(curl -s https://api.github.com/repos/Mintplex-Labs/anything-llm/license)",
+      "Bash(curl -s https://api.github.com/repos/langgenius/dify/license)",
+      "Bash(curl -s https://api.github.com/repos/deepset-ai/haystack/license)"
+    ]
+  }
+}

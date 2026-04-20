@@ -1,0 +1,7 @@
+use_case: graphrag
+modality:
+  - text
+privacy: fully_local
+multi_hop: true
+corpus_size: medium
+user_scale: team

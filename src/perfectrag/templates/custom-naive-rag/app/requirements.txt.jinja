@@ -1,0 +1,12 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+qdrant-client>=1.9
+httpx>=0.27
+pydantic>=2.6
+pypdf>=4.0
+python-multipart>=0.0.9
+{%- if recipe.doc_parser == 'docling' %}
+docling>=1.0
+{%- elif recipe.doc_parser == 'markitdown' %}
+markitdown>=0.0.1a2
+{%- endif %}
