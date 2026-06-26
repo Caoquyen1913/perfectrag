@@ -222,6 +222,17 @@ def test_default_disables_expensive_retrieval():
     assert r.extras["corrective"] is False
 
 
+def test_cag_candidate_for_small_static_corpus():
+    r = recommend(_answers(corpus_size="small", freshness="static"), _hw("gpu-8gb"))
+    assert r.extras["cag_candidate"] is True
+    assert any("CAG" in n for n in r.notes)
+
+
+def test_cag_not_candidate_for_large_corpus():
+    r = recommend(_answers(corpus_size="large", freshness="static"), _hw("gpu-8gb"))
+    assert r.extras["cag_candidate"] is False
+
+
 def test_new_answer_fields_default_safely():
     """Old-style Answers (6 fields) still construct and recommend."""
     r = recommend(_answers(), _hw("gpu-8gb"))

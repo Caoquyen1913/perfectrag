@@ -254,6 +254,14 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
         notes.append("Dữ liệu cập nhật thường xuyên → cân nhắc addon `ingest-worker`.")
     if answers.needs_citations:
         notes.append("Cần trích dẫn nguồn → bật citation/groundedness gate.")
+    # Cache-Augmented Generation fits small + stable corpora (load once into the
+    # context/KV-cache, skip per-query retrieval). Flag it as a recommendation.
+    extras["cag_candidate"] = answers.corpus_size == "small" and answers.freshness == "static"
+    if extras["cag_candidate"]:
+        notes.append(
+            "Corpus nhỏ + tĩnh → cân nhắc CAG (Cache-Augmented Generation): nạp toàn bộ "
+            "vào context một lần thay vì retrieve mỗi query. Xem docs/retrieval.md."
+        )
 
     return Recipe(
         template=template,

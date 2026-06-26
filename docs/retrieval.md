@@ -67,6 +67,18 @@ embedding: { model: BAAI/bge-m3, backend: sentence_transformers }
 llm: { runtime: ollama, model: qwen2.5:7b-instruct-q4_K_M }
 ```
 
+## Cache-Augmented Generation (CAG) — when to skip retrieval
+
+For a **small and stable** corpus, retrieval is overhead: you can load the whole
+corpus into the model's context once and answer from it directly (CAG). It wins
+when the corpus is small, shared, and broadly queried; RAG wins when it's large,
+fresh, per-tenant, or citation-heavy. The wizard flags `extras.cag_candidate`
+when your corpus is `small` + `static`.
+
+A practical setup is a **router**: CAG hot-path for the stable core, RAG cold-path
+for everything else. perfectRAG recommends CAG (doesn't force it) — a long-context
+model + a system prompt holding the corpus is often all you need for tiny corpora.
+
 ## Evaluating retrieval
 
 Measure retrieval quality separately from generation with a golden set:

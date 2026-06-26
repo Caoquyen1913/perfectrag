@@ -59,7 +59,8 @@
 ### B.2 Eval harness + CI quality gate (đóng "trust gap")
 - [x] **Tách metric retrieval** khỏi generation: module `core/evaluation.py` (recall@k, MRR, nDCG, `evaluate_retrieval`, `passes_gate`) — deterministic, không cần LLM/Docker. 7 test.
 - [x] CLI `perfectrag eval --retrieval [--gate --k N]` — chạy retrieval metrics offline (embedded library) trên golden JSONL, fail build nếu recall@k<0.8/MRR<0.7. 3 test (CliRunner).
-- [ ] (Follow-up) bake golden-set template + eval step vào scaffold của mọi template.
+- [x] Bake sample golden-set (`eval/datasets/retrieval-golden.jsonl`) + README vào custom-naive-rag.
+- [ ] (Follow-up) bake golden-set vào các template upstream khác (ragflow/r2r/onyx).
 - [ ] Generation metrics (faithfulness/answer-relevancy) vẫn dùng addon RAGAS/DeepEval đã có.
 - [ ] Citation / groundedness gate trước khi trả lời.
 
@@ -101,11 +102,24 @@ wizard, lộ qua `as_template_vars` + webserver `RecommendReq`. Wiring trong `re
 - [x] **Parent-document / hierarchical retrieval** — `RAG(parent_chunk_size=N)`: embed child chunks nhỏ, query đưa parent block (dedup) cho LLM. `from_dict` đọc `parent_chunk_size:`. 2 test.
 - [x] **CRAG (Corrective RAG)** — `RAG(corrective=True)`: `_grade_relevance` chấm context; nếu NO → re-retrieve 1 lần với query expansion + RRF. `from_dict` đọc `corrective:`. 2 test.
 - [ ] **Modernize reranker**: chọn theo leaderboard (Cohere v4 / Voyage 2.5 / Zerank-2 / bge-reranker-v2-m3 / Jina v3) thay vì 3 tên cứng.
-- [ ] **CAG (Cache-Augmented Generation)** flag cho corpus nhỏ/ổn định; router CAG hot-path + RAG cold-path.
+- [x] **CAG (Cache-Augmented Generation)** — `extras.cag_candidate` bật cho corpus small+static + recipe note + section trong docs/retrieval.md (router CAG/RAG). 2 test.
+- [ ] **Reranker modernize** — list OSS hiện tại vẫn ổn; cloud reranker (Cohere/Voyage) để dạng addon sau (tránh đoán sai model id).
 - [ ] ⚠️ **KHÔNG default semantic chunking** — recursive 512 thắng cost/quality theo benchmark 2025-26. Chỉ offer, không push.
 - [ ] (Tham khảo, không default) RAPTOR (multi-doc summary tree), HyDE (chỉ opt-in — hại query số/chính xác), ColBERT late-interaction (niche, tốn storage), RAFT (sau khi đã có RAG chạy + lỗi behavior).
 
 ---
+
+## Trạng thái (cập nhật)
+
+**Đã hoàn thành (loop):** Track 0 (bug fixes), Track A (code-graph template + MCP),
+Track B (contextual retrieval, parent-doc, retrieval-eval + CLI gate + golden-set),
+Track C (6 câu hỏi wizard mới + scored advisor), Track D (template R2R + Onyx →
+7 template), Track E (RRF, query-expansion, parent-doc, CRAG, CAG flag).
+**144 test pass, ruff sạch, mọi compose VALID.**
+
+**Follow-up còn lại (thấp/đặc thù upstream):** apply contextual/eval vào backbone
+upstream (ragflow/dify/lightrag/r2r/onyx); budget question + latency/cost axes
+trong scoring; cloud reranker addon; bundled skill `code-graph`.
 
 ## Thứ tự đề xuất (sequencing)
 

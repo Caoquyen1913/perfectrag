@@ -38,6 +38,15 @@ curl -X POST http://localhost:8000/query \
   -d '{"question": "What is RAG?"}'
 ```
 
+## Evaluate retrieval quality
+
+```bash
+# edit eval/datasets/retrieval-golden.jsonl with real questions + relevant sources
+perfectrag eval --retrieval -d eval/datasets/retrieval-golden.jsonl --gate
+```
+
+Reports recall@k / MRR / nDCG; `--gate` exits non-zero below thresholds (CI gate).
+
 ## Add MCP tool
 
 ```bash
