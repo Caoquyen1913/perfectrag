@@ -56,9 +56,9 @@
 - [ ] Pairs tốt với **parent-document retrieval** (embed chunk nhỏ, trả parent lớn).
 
 ### B.2 Eval harness + CI quality gate (đóng "trust gap")
-- [ ] Bake `eval/` vào **mọi** project sinh ra (không chỉ khi add addon): RAGAS (CI nhẹ) hoặc DeepEval (pytest gate).
-- [ ] Golden Q&A set template + threshold: `faithfulness ≥ 0.85`, `context_recall ≥ 0.8` → fail build nếu dưới.
-- [ ] **Tách metric**: retrieval (recall@k, MRR, nDCG) vs generation (faithfulness, answer-relevancy) — để biết lỗi do chunk hay do prompt.
+- [x] **Tách metric retrieval** khỏi generation: module `core/evaluation.py` (recall@k, MRR, nDCG, `evaluate_retrieval`, `passes_gate`) — deterministic, không cần LLM/Docker. 7 test.
+- [ ] Bake `eval/` + golden set + `passes_gate` thresholds vào **mọi** project (CLI `perfectrag eval --retrieval` + fail build) — follow-up wiring.
+- [ ] Generation metrics (faithfulness/answer-relevancy) vẫn dùng addon RAGAS/DeepEval đã có.
 - [ ] Citation / groundedness gate trước khi trả lời.
 
 ---
