@@ -1,3 +1,8 @@
-"""perfectRAG — dynamic RAG framework scaffolder."""
+"""perfectRAG — dynamic RAG framework scaffolder + embedded Python library."""
 
-__version__ = "0.1.0"
+__version__ = "1.1.0"
+
+# Top-level export for library mode: `from perfectrag import RAG`
+from perfectrag.core import RAG
+
+__all__ = ["RAG", "__version__"]

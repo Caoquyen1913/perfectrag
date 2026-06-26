@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: app }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: app } }
+  template:
+    metadata: { labels: { app: app } }
+    spec:
+      containers:
+        - name: app
+          image: {{ '{{' }} .Values.image.app {{ '}}' }}
+          ports: [{ containerPort: 8000 }]
+          env:
+            - { name: OLLAMA_URL, value: http://ollama:11434 }
+            - { name: QDRANT_URL, value: http://qdrant:6333 }
+            - { name: LLM_MODEL, value: {{ '"{{' }} .Values.models.llm {{ '}}"' }} }
+            - { name: EMBEDDING_MODEL, value: {{ '"{{' }} .Values.models.embedding {{ '}}"' }} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: app }
+spec:
+  selector: { app: app }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: openwebui }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: openwebui } }
+  template:
+    metadata: { labels: { app: openwebui } }
+    spec:
+      containers:
+        - name: openwebui
+          image: {{ '{{' }} .Values.image.openwebui {{ '}}' }}
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: OLLAMA_BASE_URL, value: http://ollama:11434 }
+            - { name: WEBUI_AUTH, value: "false" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: openwebui }
+spec:
+  type: {{ '{{' }} .Values.service.openwebui.type {{ '}}' }}
+  selector: { app: openwebui }
+  ports: [{ port: {{ '{{' }} .Values.service.openwebui.port {{ '}}' }}, targetPort: 8080 }]

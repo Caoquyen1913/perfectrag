@@ -1,0 +1,14 @@
+services:
+  context-eng:
+    build:
+      context: ./context-eng
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - LLM_MODEL={{ recipe.llm_model if recipe is defined else 'qwen2.5:3b-instruct-q4_K_M' }}
+      - MEM0_STORE_PATH=/app/state/mem0.db
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./volumes/context-eng:/app/state

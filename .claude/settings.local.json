@@ -18,7 +18,12 @@
       "Bash(curl -s https://api.github.com/repos/infiniflow/ragflow/license)",
       "Bash(curl -s https://api.github.com/repos/Mintplex-Labs/anything-llm/license)",
       "Bash(curl -s https://api.github.com/repos/langgenius/dify/license)",
-      "Bash(curl -s https://api.github.com/repos/deepset-ai/haystack/license)"
+      "Bash(curl -s https://api.github.com/repos/deepset-ai/haystack/license)",
+      "Bash(git --version)",
+      "Bash(.venv/Scripts/perfectrag add *)",
+      "Bash(.venv/Scripts/perfectrag list *)",
+      "Bash(.venv/Scripts/perfectrag remove *)",
+      "Bash(.venv/Scripts/perfectrag advise *)"
     ]
   }
 }

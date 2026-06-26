@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "perfectrag"
-version = "0.1.0"
-description = "Dynamic RAG framework scaffolder — wizard-driven, hardware-aware, docker-ready"
+version = "1.1.0"
+description = "RAG scaffolder + embedded library: Docker-free local mode, multi-backend (Qdrant/Milvus/Chroma/LanceDB/pgvector), Gemini advisor, SaaS Query API with auth + rate limit"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
@@ -37,12 +37,45 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+web = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "httpx>=0.27",
+]
+# Vector DB backends
+qdrant   = ["qdrant-client>=1.9"]
+milvus   = ["pymilvus>=2.4"]
+chroma   = ["chromadb>=0.5"]
+lancedb  = ["lancedb>=0.13"]
+pgvector = ["psycopg[binary]>=3.2"]
+# Embeddings / rerankers (heavy — needs torch)
+embed-torch = [
+    "sentence-transformers>=3.0",
+]
+# LLM runtimes
+llamacpp = ["llama-cpp-python>=0.3"]
+# Gemini advisor
+advisor = ["google-generativeai>=0.7"]
+# Convenience: full local stack
+local-full = [
+    "qdrant-client>=1.9",
+    "chromadb>=0.5",
+    "sentence-transformers>=3.0",
+    "llama-cpp-python>=0.3",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "httpx>=0.27",
+    "markitdown>=0.0.1a2",
+]
 dev = [
     "pytest>=8.0",
     "pytest-mock>=3.12",
     "ruff>=0.5",
     "mypy>=1.10",
     "types-PyYAML",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "httpx>=0.27",
 ]
 
 [project.scripts]
@@ -54,9 +87,24 @@ Issues = "https://github.com/your-org/perfectrag/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/perfectrag"]
+include = [
+    "src/perfectrag/**/*.py",
+    "src/perfectrag/templates/**/*",
+    "src/perfectrag/deploy/**/*",
+]
+artifacts = [
+    "src/perfectrag/templates/**/*",
+    "src/perfectrag/deploy/**/*",
+]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/perfectrag/templates" = "perfectrag/templates"
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/perfectrag",
+    "README.md",
+    "pyproject.toml",
+    "tests",
+    "docs",
+]
 
 [tool.ruff]
 line-length = 100
@@ -68,7 +116,7 @@ select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
 # SIM105 — try/except/pass is clearer than contextlib.suppress here
 # SIM117 — nested with-statements are sometimes clearer
 # C401 — generator vs set comprehension nit
-ignore = ["E501", "B008", "SIM105", "SIM117", "C401", "RUF012"]
+ignore = ["E501", "B008", "SIM105", "SIM117", "C401", "RUF012", "B904", "E402", "UP028", "B905", "RUF005", "RUF001"]
 
 [tool.mypy]
 python_version = "3.10"

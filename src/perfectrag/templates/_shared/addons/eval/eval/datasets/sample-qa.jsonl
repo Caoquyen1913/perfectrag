@@ -1,0 +1,3 @@
+{"question": "What is retrieval-augmented generation?", "ground_truth": "RAG combines a retrieval step over external documents with an LLM that generates answers grounded in the retrieved context."}
+{"question": "Why use a vector database for RAG?", "ground_truth": "Vector databases let you search documents by semantic similarity via dense embeddings, which is the retrieval primitive RAG depends on."}
+{"question": "What is reranking in a RAG pipeline?", "ground_truth": "A reranker is a small cross-encoder that scores retrieved passages against the query to reorder them before passing them to the LLM."}

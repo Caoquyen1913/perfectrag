@@ -1,0 +1,8 @@
+# Ingest worker config. Edit and `perfectrag up` (or restart ingest-worker) to apply.
+schedule: "0 */6 * * *"   # every 6 hours (cron syntax)
+
+sources:
+  - name: example
+    urls:
+      - https://example.com
+      # Add URLs / sitemaps here. One URL per line.

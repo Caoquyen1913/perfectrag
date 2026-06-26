@@ -1,4 +1,4 @@
-"""Minimal naive-RAG FastAPI service wired to Qdrant + Ollama."""
+"""Naive-RAG service backed by perfectrag.core.RAG + mounted /v1/* SaaS API."""
 
 from __future__ import annotations
 
@@ -6,67 +6,31 @@ import os
 import uuid
 from pathlib import Path
 
-import httpx
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
 
-OLLAMA_URL = os.environ["OLLAMA_URL"]
-QDRANT_URL = os.environ["QDRANT_URL"]
-COLLECTION = os.environ.get("QDRANT_COLLECTION", "documents")
-LLM_MODEL = os.environ["LLM_MODEL"]
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "nomic-embed-text")
-CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "512"))
-TOP_K = int(os.environ.get("TOP_K", "5"))
+from perfectrag import RAG
+from perfectrag.query_api import app as saas_app
 
-app = FastAPI(title="{{ project_name }}", version="0.1.0")
-qdrant = QdrantClient(url=QDRANT_URL)
+CONFIG_PATH = os.environ.get("PERFECTRAG_CONFIG", "/app/perfectrag.yml")
+os.environ.setdefault("PERFECTRAG_CONFIG", CONFIG_PATH)
+os.environ.setdefault("PERFECTRAG_PROJECT_DIR", str(Path(CONFIG_PATH).parent))
 
+app = FastAPI(title="{{ project_name }}", version="1.1.0")
 
-def _ensure_collection(vector_size: int) -> None:
-    if COLLECTION not in [c.name for c in qdrant.get_collections().collections]:
-        qdrant.create_collection(
-            collection_name=COLLECTION,
-            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
-        )
+# Legacy endpoints (used by open-webui + existing clients)
+_rag: RAG | None = None
 
 
-async def _embed(text: str) -> list[float]:
-    async with httpx.AsyncClient(timeout=60) as client:
-        r = await client.post(
-            f"{OLLAMA_URL}/api/embeddings",
-            json={"model": EMBEDDING_MODEL, "prompt": text},
-        )
-        r.raise_for_status()
-        return r.json()["embedding"]
-
-
-async def _generate(prompt: str) -> str:
-    async with httpx.AsyncClient(timeout=120) as client:
-        r = await client.post(
-            f"{OLLAMA_URL}/api/generate",
-            json={"model": LLM_MODEL, "prompt": prompt, "stream": False},
-        )
-        r.raise_for_status()
-        return r.json()["response"]
-
-
-def _chunk(text: str, size: int = CHUNK_SIZE) -> list[str]:
-    words = text.split()
-    return [" ".join(words[i : i + size]) for i in range(0, len(words), size)]
-
-
-def _extract_text(path: Path) -> str:
-    if path.suffix.lower() == ".pdf":
-        from pypdf import PdfReader
-
-        return "\n".join(p.extract_text() or "" for p in PdfReader(str(path)).pages)
-    return path.read_text(encoding="utf-8", errors="ignore")
+def get_rag() -> RAG:
+    global _rag
+    if _rag is None:
+        _rag = RAG.from_config(CONFIG_PATH)
+    return _rag
 
 
 @app.get("/health")
-async def health() -> dict:
+def health() -> dict:
     return {"status": "ok"}
 
 
@@ -76,29 +40,8 @@ async def ingest(file: UploadFile = File(...)) -> dict:
     data_dir.mkdir(exist_ok=True)
     dst = data_dir / file.filename
     dst.write_bytes(await file.read())
-
-    text = _extract_text(dst)
-    chunks = _chunk(text)
-    if not chunks:
-        raise HTTPException(400, "Empty document")
-
-    first_vec = await _embed(chunks[0])
-    _ensure_collection(len(first_vec))
-
-    points: list[PointStruct] = [PointStruct(
-        id=str(uuid.uuid4()),
-        vector=first_vec,
-        payload={"text": chunks[0], "source": file.filename},
-    )]
-    for chunk in chunks[1:]:
-        vec = await _embed(chunk)
-        points.append(PointStruct(
-            id=str(uuid.uuid4()),
-            vector=vec,
-            payload={"text": chunk, "source": file.filename},
-        ))
-    qdrant.upsert(collection_name=COLLECTION, points=points)
-    return {"chunks": len(points), "source": file.filename}
+    n = get_rag().ingest(dst)
+    return {"chunks": n, "source": file.filename}
 
 
 class QueryReq(BaseModel):
@@ -107,28 +50,12 @@ class QueryReq(BaseModel):
 
 
 @app.post("/query")
-async def query(req: QueryReq) -> dict:
-    vec = await _embed(req.question)
-    hits = qdrant.search(
-        collection_name=COLLECTION,
-        query_vector=vec,
-        limit=req.top_k or TOP_K,
-    )
-    context = "\n---\n".join(h.payload["text"] for h in hits)
-    prompt = (
-        f"Context:\n{context}\n\n"
-        f"Question: {req.question}\n"
-        f"Answer concisely using only the context above. "
-        f"If the context does not contain the answer, say so."
-    )
-    answer = await _generate(prompt)
-    return {
-        "answer": answer,
-        "sources": [{"source": h.payload.get("source"), "score": h.score} for h in hits],
-    }
+def query(req: QueryReq) -> dict:
+    result = get_rag().query(req.question, k=req.top_k)
+    return result.as_dict()
 
 
-# OpenAI-compatible endpoint for open-webui RAG integration
+# OpenAI-compatible chat for open-webui RAG plumbing
 class OpenAIChatReq(BaseModel):
     model: str
     messages: list[dict]
@@ -136,16 +63,18 @@ class OpenAIChatReq(BaseModel):
 
 
 @app.post("/v1/chat/completions")
-async def openai_chat(req: OpenAIChatReq) -> dict:
+def openai_chat(req: OpenAIChatReq) -> dict:
     last_user = next((m["content"] for m in reversed(req.messages) if m["role"] == "user"), "")
-    result = await query(QueryReq(question=last_user))
+    result = get_rag().query(last_user)
     return {
         "id": str(uuid.uuid4()),
         "object": "chat.completion",
-        "model": LLM_MODEL,
-        "choices": [{
-            "index": 0,
-            "message": {"role": "assistant", "content": result["answer"]},
-            "finish_reason": "stop",
-        }],
+        "model": result.hits[0].chunk.source if result.hits else "rag",
+        "choices": [{"index": 0,
+                     "message": {"role": "assistant", "content": result.answer},
+                     "finish_reason": "stop"}],
     }
+
+
+# Mount the authenticated SaaS API at /v1 (query, ingest, collections, keys, usage)
+app.mount("/", saas_app)

@@ -71,6 +71,42 @@ REGISTRY: dict[str, dict] = {
         "args": ["mcp-server-qdrant", "--qdrant-url", "${QDRANT_URL:-http://localhost:6333}"],
         "env": [],
     },
+    "crawl4ai": {
+        "description": "Crawl4AI — LLM-optimized web crawler (JS rendering, markdown output)",
+        "command": "uvx",
+        "args": ["crawl4ai-mcp"],
+        "env": [],
+    },
+    "firecrawl": {
+        "description": "Firecrawl MCP — JS rendering, sitemap crawl (cần FIRECRAWL_API_KEY nếu dùng cloud)",
+        "command": "npx",
+        "args": ["-y", "firecrawl-mcp"],
+        "env": ["FIRECRAWL_API_KEY"],
+    },
+    "notion": {
+        "description": "Notion API — read pages/databases (cần NOTION_API_KEY)",
+        "command": "npx",
+        "args": ["-y", "@notionhq/notion-mcp-server"],
+        "env": ["NOTION_API_KEY"],
+    },
+    "gdrive": {
+        "description": "Google Drive MCP — search + read files",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-gdrive"],
+        "env": ["GDRIVE_SERVICE_ACCOUNT_JSON"],
+    },
+    "confluence": {
+        "description": "Confluence/Jira Atlassian MCP",
+        "command": "npx",
+        "args": ["-y", "@sooperset/mcp-atlassian"],
+        "env": ["CONFLUENCE_URL", "CONFLUENCE_API_TOKEN"],
+    },
+    "slack": {
+        "description": "Slack channels + messages (cần SLACK_BOT_TOKEN)",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-slack"],
+        "env": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
+    },
 }
 
 

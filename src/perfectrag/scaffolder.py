@@ -1,7 +1,17 @@
-"""Wraps Copier to render a chosen template with recipe + hardware + answers vars."""
+"""Wraps Copier to render a chosen template with recipe + hardware + answers vars.
+
+Built-in templates live in `perfectrag.templates.<name>`. Third-party templates may
+be published as separate pip packages and registered via entry_points:
+
+    [project.entry-points."perfectrag.templates"]
+    my-template = "my_pkg.my_template:provide"
+
+where `provide` is a callable returning a dict: `{"path": Path, "description": str}`.
+"""
 
 from __future__ import annotations
 
+from importlib.metadata import entry_points
 from importlib.resources import files
 from pathlib import Path
 
@@ -11,8 +21,9 @@ from perfectrag.hardware import HardwareProfile
 from perfectrag.recipes import Answers, Recipe
 
 TEMPLATES_PKG = "perfectrag.templates"
+ENTRY_POINT_GROUP = "perfectrag.templates"
 
-_DESCRIPTIONS = {
+_BUILTIN_DESCRIPTIONS = {
     "custom-naive-rag": "FastAPI + Qdrant + Ollama + open-webui — minimal DIY stack",
     "ragflow-stack":    "RAGFlow — hybrid search, deep doc parsing, agentic, MCP-ready",
     "lightrag-stack":   "LightRAG — GraphRAG với dual-level retrieval + WebUI",
@@ -20,21 +31,49 @@ _DESCRIPTIONS = {
 }
 
 
+def _third_party_templates() -> dict[str, dict]:
+    """Discover templates registered via pip entry points."""
+    found: dict[str, dict] = {}
+    try:
+        eps = entry_points(group=ENTRY_POINT_GROUP)
+    except TypeError:  # pragma: no cover — older Python
+        eps = entry_points().get(ENTRY_POINT_GROUP, [])  # type: ignore[assignment]
+    for ep in eps:
+        try:
+            provider = ep.load()
+            info = provider() if callable(provider) else provider
+            if isinstance(info, dict) and "path" in info:
+                found[ep.name] = {
+                    "path": Path(str(info["path"])),
+                    "description": info.get("description", f"Third-party template '{ep.name}'"),
+                }
+        except Exception:  # skip broken plugins
+            continue
+    return found
+
+
 def available_templates() -> dict[str, str]:
     root = files(TEMPLATES_PKG)
     out: dict[str, str] = {}
-    for name in _DESCRIPTIONS:
+    for name, desc in _BUILTIN_DESCRIPTIONS.items():
         if root.joinpath(name).is_dir():
-            out[name] = _DESCRIPTIONS[name]
+            out[name] = desc
+    for name, info in _third_party_templates().items():
+        # Third-party can't shadow built-in names (safer UX)
+        if name not in out:
+            out[name] = info["description"]
     return out
 
 
 def template_path(template: str) -> Path:
     root = files(TEMPLATES_PKG)
-    path = root.joinpath(template)
-    if not path.is_dir():
-        raise ValueError(f"Template không tồn tại: {template}")
-    return Path(str(path))
+    builtin = root.joinpath(template)
+    if builtin.is_dir():
+        return Path(str(builtin))
+    third = _third_party_templates().get(template)
+    if third is not None and third["path"].is_dir():
+        return third["path"]
+    raise ValueError(f"Template không tồn tại: {template}")
 
 
 def render(

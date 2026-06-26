@@ -1,0 +1,23 @@
+services:
+  gdrive-sync:
+    image: python:3.11-slim
+    restart: unless-stopped
+    depends_on:
+      - qdrant
+      - ollama
+    environment:
+      - GDRIVE_SERVICE_ACCOUNT_JSON=/app/sa.json
+      - OLLAMA_URL=http://ollama:11434
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-documents}
+      - EMBEDDING_MODEL={{ recipe.embedding_model if recipe is defined else 'nomic-embed-text' }}
+      - SYNC_SCHEDULE=${GDRIVE_SCHEDULE:-0 */6 * * *}
+      - GDRIVE_FOLDER_ID=${GDRIVE_FOLDER_ID}
+    working_dir: /app
+    command: >
+      sh -c "pip install --quiet google-api-python-client google-auth qdrant-client httpx croniter &&
+             python /app/gdrive_sync.py"
+    volumes:
+      - ${GDRIVE_SERVICE_ACCOUNT_JSON:-./gdrive-sync/sa.json}:/app/sa.json:ro
+      - ./gdrive-sync/gdrive_sync.py:/app/gdrive_sync.py:ro
+      - ./volumes/gdrive-sync:/app/state

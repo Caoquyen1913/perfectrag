@@ -6,6 +6,10 @@ services:
       - "6333:6333"
     volumes:
       - ./volumes/qdrant:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/6333"]
+      interval: 10s
+      retries: 10
 
   ollama:
     image: ollama/ollama:latest
@@ -47,6 +51,16 @@ services:
     volumes:
       - ./data:/data
       - ./skills:/app/skills:ro
+      - ./perfectrag.yml:/app/perfectrag.yml:ro
+      - ./.perfectrag:/app/.perfectrag
+    environment:
+      - PERFECTRAG_CONFIG=/app/perfectrag.yml
+      - PERFECTRAG_PROJECT_DIR=/app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 15s
+      retries: 10
+      start_period: 30s
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main

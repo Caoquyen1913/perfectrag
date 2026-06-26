@@ -14,3 +14,19 @@ htmlcov/
 .vscode/
 *.swp
 .DS_Store
+
+# Node / Next.js (ui/)
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Local runtime / secrets (never commit)
+.env
+.env.local
+.perfectrag/
+*.gguf

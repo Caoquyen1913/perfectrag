@@ -1,157 +1,129 @@
 # perfectRAG
 
+> RAG scaffolder **+ embedded Python library**. Run with Docker, without Docker, or as a SaaS API — your choice.
 
-> Dynamic RAG framework scaffolder — wizard hỏi vài câu, detect hardware, rồi sinh ra service RAG hoàn chỉnh (docker-compose + UI + API) chạy ngay.
+**v1.1 adds**: Docker-free local mode (`from perfectrag import RAG`), full component matrix (5 vector DBs × 5 embeddings × 4 rerankers × 6 LLM runtimes), Gemini advisor, and a built-in OpenAI-style Query API with bearer auth + rate limit.
 
-Thay vì copy–paste docker-compose từ RAGFlow/Dify/LightRAG rồi loay hoay sửa `.env`, `perfectrag init` sẽ:
+## Three ways to use it
 
-1. Detect hardware (CPU/GPU/RAM/VRAM).
-2. Hỏi bạn 6 câu về use-case (Q&A / GraphRAG / agentic / multimodal / code RAG).
-3. Tự chọn tech stack phù hợp: LLM, embedding, reranker, vector DB, parser.
-4. Scaffold project hoàn chỉnh: `docker-compose.yml` + `.env` + `mcp.yaml` + `skills/` + README.
-5. `docker compose up -d` → có ngay UI + API chạy trên localhost.
+```python
+# 1. Embedded Python library (no Docker)
+from perfectrag import RAG
+rag = RAG.from_config("perfectrag.yml")
+rag.ingest("./docs")
+print(rag.query("What is RAG?").answer)
+```
 
-Tất cả **free & open-source**, không vendor lock-in.
+```bash
+# 2. Scaffolded docker-compose stack (same config, same API)
+perfectrag init my-rag
+cd my-rag && perfectrag up
+
+# 3. SaaS API for external clients
+perfectrag key issue --name "prod app" --rate 100 -p .
+curl -H "Authorization: Bearer sk-rag-..." \
+  -d '{"question":"..."}' http://localhost:8000/v1/query
+```
+
+Instead of gluing RAGFlow/Dify/LightRAG docker-compose files by hand, `perfectrag`:
+
+1. **Detects hardware** (CPU / NVIDIA / Apple Silicon / AMD) + VRAM tier.
+2. **Asks use-case questions** (Q&A / GraphRAG / agent / multimodal / code / web).
+3. **Picks a recipe** (LLM + embedding + reranker + vector DB + parser) tuned to your hardware.
+4. **Scaffolds a full project** (`docker-compose.yml` + `.env` + `mcp.yaml` + `skills/` + optional addons).
+5. **Orchestrates** with `perfectrag up / doctor / logs / eval / deploy`.
+6. **Ships a browser wizard** (Next.js) if you'd rather click than type.
 
 ## Install
 
 ```bash
-pip install perfectrag
-# hoặc từ source: pip install -e ".[dev]"
+pip install perfectrag           # CLI + core
+pip install 'perfectrag[web]'    # + FastAPI backend for Next.js UI
 ```
 
-## Quickstart
+## Quickstart — the one-liner
 
 ```bash
-perfectrag init my-rag
+perfectrag init my-rag --with eval,observability,paperclip
 cd my-rag
-docker compose up -d
+perfectrag up
 ```
 
-Mở UI theo stack đã chọn:
-- `custom-naive-rag` → http://localhost:3000 (open-webui)
-- `ragflow-stack` → http://localhost (RAGFlow)
-- `lightrag-stack` → http://localhost:9621 (LightRAG WebUI)
-- `dify-stack` → http://localhost (Dify)
+That gives you a RAG service, eval dashboard, observability gateway, and multi-agent orchestrator running on localhost in one shot.
 
 ## Commands
 
-| Command | Mô tả |
+| Command | What it does |
 |---|---|
-| `perfectrag init [DIR]` | Wizard → scaffold project |
-| `perfectrag init DIR --template ragflow-stack` | Force template, skip recommendation |
-| `perfectrag init DIR --answers-file a.yml` | Non-interactive (CI) |
-| `perfectrag init DIR --dry-run` | Preview recipe, không ghi file |
-| `perfectrag hw` | Detect hardware + show tier |
-| `perfectrag list templates` | Liệt kê templates bundled |
-| `perfectrag list mcp` | Liệt kê MCP servers trong registry |
-| `perfectrag list skills` | Liệt kê skills bundled |
-| `perfectrag add mcp <name> --project DIR` | Thêm MCP server vào project |
-| `perfectrag add skill <name> --project DIR` | Thêm skill vào project |
+| `perfectrag init [DIR]` | Wizard → scaffold a project |
+| `perfectrag init DIR --with a,b,c` | Install addons at init time |
+| `perfectrag init DIR --template ragflow-stack` | Force a specific backbone |
+| `perfectrag add mcp/skill/addon <name>` | Extend a generated project |
+| `perfectrag up / down / logs / doctor` | Orchestrate the generated project |
+| `perfectrag eval --dataset qa.jsonl` | Run RAGAS + DeepEval (needs `eval` addon) |
+| `perfectrag deploy helm/flyio/railway` | Render production deploy assets |
+| `perfectrag web` | Start FastAPI backend for Next.js UI |
+| `perfectrag list templates/mcp/skills/addons/installed` | Show catalogues |
+| `perfectrag hw` | Show detected hardware + tier |
 
-## Templates
+## Templates (v1.0)
 
-| Template | Use-case | Key components | UI |
-|---|---|---|---|
-| `custom-naive-rag` | Q&A nhỏ, CPU-only, học | FastAPI + Qdrant + Ollama | open-webui |
-| `ragflow-stack` | Q&A hybrid search, agentic, MCP-native | RAGFlow + Elasticsearch + MySQL + Redis + MinIO + Ollama | RAGFlow |
-| `lightrag-stack` | GraphRAG / multi-hop reasoning | LightRAG + Ollama + open-webui | LightRAG WebUI |
-| `dify-stack` | Workflow / agent / no-code team | Dify + Postgres + Qdrant + Redis + Ollama | Dify Console |
-
-Chọn template khác? `perfectrag init DIR --template <name>`.
-
-## Hardware → tier mapping
-
-| Tier | Khi nào | Default stack |
+| Template | Use-case | Backbone |
 |---|---|---|
-| `cpu` | Không có GPU | `custom-naive-rag` + Qwen2.5 3B (q4) + nomic-embed |
-| `apple-low` | Apple Silicon ≤16 GB RAM | `ragflow-stack` + Qwen2.5 7B (q4) |
-| `apple-high` | Apple Silicon ≥24 GB RAM | `ragflow-stack` + Qwen2.5 14B (q4) |
-| `gpu-8gb` | NVIDIA 6–11 GB VRAM | `ragflow-stack` + Qwen2.5 7B (q5) + BGE-M3 |
-| `gpu-12gb` | NVIDIA 12–23 GB VRAM | `ragflow-stack` + Qwen2.5 14B (q4) |
-| `gpu-24gb` | NVIDIA ≥24 GB VRAM | `lightrag-stack`/`ragflow-stack` + Qwen2.5 32B (q4) + vLLM |
+| `custom-naive-rag` | Learning / CPU-only / tiny corpus | FastAPI + Qdrant + Ollama + open-webui |
+| `ragflow-stack` | Production Q&A + hybrid search + agentic | [RAGFlow](https://github.com/infiniflow/ragflow) |
+| `lightrag-stack` | GraphRAG / multi-hop reasoning | [LightRAG](https://github.com/HKUDS/LightRAG) |
+| `dify-stack` | Workflow / agent / no-code team | [Dify](https://github.com/langgenius/dify) |
 
-Routing override hard rules:
-- `use_case=graphrag` **or** `multi_hop=true` → `lightrag-stack`
-- `use_case=agent_workflow` → `dify-stack`
-- `use_case=multimodal` → `ragflow-stack` (với Docling parser)
+Third-party templates: publish via `[project.entry-points."perfectrag.templates"]` — users get them after `pip install`.
 
-## Extensibility
+## Addons (v1.0)
 
-### Add MCP tool
+| Addon | Purpose | Based on |
+|---|---|---|
+| `eval` | RAG quality measurement | RAGAS, DeepEval |
+| `observability` | LLM gateway + tracing | LiteLLM, Langfuse |
+| `context-eng` | Prompt compression + memory | DSPy, LLMLingua, mem0 |
+| `ingest-worker` | Scheduled web crawl → vector store | Crawl4AI |
+| `notion-sync` | Notion → vector store | notion-client |
+| `gdrive-sync` | Google Drive → vector store | google-api-python-client |
+| `confluence-sync` | Confluence → vector store | atlassian-python-api |
+| `paperclip` | Multi-agent orchestrator | [Paperclip](https://github.com/paperclipai/paperclip) |
 
-Drop vào `mcp.yaml` của project, hoặc dùng CLI:
+Each addon is a `compose.<name>.yml` overlay that `perfectrag up` auto-merges. See [docs/addons.md](docs/addons.md).
 
-```bash
-perfectrag add mcp tavily --project .
-# set TAVILY_API_KEY trong .env
-docker compose restart
-```
-
-Xem `perfectrag list mcp` cho 10 MCP servers có sẵn (filesystem, fetch, tavily, brave-search, postgres, sqlite, github, memory, sequential-thinking, qdrant).
-
-Thêm MCP tùy ý: edit `mcp.yaml` trực tiếp — format tương thích Claude Code / Cursor / Claude Desktop.
-
-### Add skill
+## Browser wizard
 
 ```bash
-perfectrag add skill legal-rag --project .
+pip install 'perfectrag[web]'
+perfectrag web           # backend on :7777
+
+# in another terminal
+cd ui && pnpm install && pnpm dev    # UI on :3001
 ```
 
-Bundled skills: `legal-rag`, `code-rag`, `medical-rag`, `research-rag`. Skill = `skills/<name>/SKILL.md` với YAML frontmatter — copy từ Claude Code skill format.
+See [docs/ui.md](docs/ui.md).
 
-Tự viết skill? Tạo file `skills/<name>/SKILL.md`:
-
-```markdown
----
-name: my-skill
-description: short one-liner
----
-# my skill
-Retrieval / prompt instructions here...
-```
-
-### Contribute template
-
-Template = một thư mục Copier trong `src/perfectrag/templates/<name>/`:
-
-```
-<name>/
-├── copier.yml                    # _templates_suffix: .jinja
-├── docker-compose.yml.jinja     # dùng {{ recipe.* }}, {{ hw.* }}, {{ answers.* }}
-├── .env.jinja
-├── README.md.jinja
-├── mcp.yaml.jinja
-└── skills/.gitkeep
-```
-
-Thêm vào `_DESCRIPTIONS` trong `src/perfectrag/scaffolder.py` — xong.
-
-## Architecture
-
-```
-perfectrag CLI
-     │
-     ├─ hardware.py   (psutil + nvml + sysctl)
-     ├─ wizard.py     (InquirerPy conditional questions)
-     ├─ recipes.py    (decision matrix: answers+hw → recipe)
-     ├─ scaffolder.py (copier wrapper)
-     └─ templates/
-         ├─ custom-naive-rag/
-         ├─ ragflow-stack/
-         ├─ lightrag-stack/
-         ├─ dify-stack/
-         └─ _shared/skills/
-```
-
-## Development
+## Deploy to production
 
 ```bash
-pip install -e ".[dev]"
-pytest              # 49 tests
-ruff check src tests
-mypy src
+perfectrag deploy helm --project ./my-rag --out ./chart
+helm lint ./chart
+helm install my-rag ./chart
 ```
+
+Also supports `flyio` and `railway`. See [docs/deploy.md](docs/deploy.md).
+
+## Docs
+
+- [Addons](docs/addons.md)
+- [Eval](docs/eval.md)
+- [Observability](docs/observability.md)
+- [Deploy](docs/deploy.md)
+- [Browser UI](docs/ui.md)
+- [Templates](docs/templates.md)
+- [MCP registry](docs/mcp.md)
+- [Skills](docs/skills.md)
 
 ## License
 

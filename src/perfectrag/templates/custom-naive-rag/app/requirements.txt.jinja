@@ -1,12 +1,19 @@
-fastapi>=0.110
-uvicorn[standard]>=0.27
-qdrant-client>=1.9
-httpx>=0.27
-pydantic>=2.6
+perfectrag[web{%- if recipe.vector_db == 'qdrant' -%},qdrant{%- endif -%}
+{%- if recipe.vector_db == 'chroma' -%},chroma{%- endif -%}
+{%- if recipe.vector_db == 'milvus' -%},milvus{%- endif -%}
+{%- if recipe.vector_db == 'lancedb' -%},lancedb{%- endif -%}
+{%- if recipe.vector_db == 'pgvector' -%},pgvector{%- endif -%}
+]>=1.1.0
+{%- if recipe.embedding_model != 'nomic-embed-text' %}
+sentence-transformers>=3.0
+{%- endif %}
+{%- if recipe.reranker %}
+# sentence-transformers provides CrossEncoder for rerankers
+{%- endif %}
+{%- if recipe.doc_parser == 'markitdown' %}
+markitdown>=0.0.1a2
+{%- elif recipe.doc_parser == 'docling' %}
+docling>=1.0
+{%- endif %}
 pypdf>=4.0
 python-multipart>=0.0.9
-{%- if recipe.doc_parser == 'docling' %}
-docling>=1.0
-{%- elif recipe.doc_parser == 'markitdown' %}
-markitdown>=0.0.1a2
-{%- endif %}

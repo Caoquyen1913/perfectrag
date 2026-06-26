@@ -1,0 +1,42 @@
+# perfectrag config — drives embedded library (`perfectrag run --config perfectrag.yml`)
+# and the SaaS Query API (/v1/*). Switch backends here without editing compose.
+
+collection: documents
+chunk_size: {{ recipe.chunk_size }}
+top_k: 5
+
+store:
+  name: {{ recipe.vector_db }}
+  {%- if recipe.vector_db == 'qdrant' %}
+  url: ${QDRANT_URL:-http://localhost:6333}
+  {%- elif recipe.vector_db == 'chroma' %}
+  path: ./data/chroma
+  {%- elif recipe.vector_db == 'milvus' %}
+  path: ./data/milvus.db
+  {%- elif recipe.vector_db == 'lancedb' %}
+  path: ./data/lancedb
+  {%- elif recipe.vector_db == 'pgvector' %}
+  url: ${POSTGRES_URL}
+  {%- endif %}
+
+embedding:
+  model: {{ recipe.embedding_model }}
+  {%- if recipe.embedding_model == 'nomic-embed-text' %}
+  backend: ollama
+  url: ${OLLAMA_URL:-http://localhost:11434}
+  {%- endif %}
+
+{%- if recipe.reranker %}
+reranker:
+  model: {{ recipe.reranker }}
+{%- endif %}
+
+llm:
+  runtime: {{ recipe.llm_runtime }}
+  model: {{ recipe.llm_model }}
+  {%- if recipe.llm_runtime == 'ollama' %}
+  url: ${OLLAMA_URL:-http://localhost:11434}
+  {%- endif %}
+
+parser:
+  name: {{ recipe.doc_parser }}

@@ -1,0 +1,28 @@
+image:
+  app:        perfectrag/naive-app:latest
+  qdrant:     qdrant/qdrant:v1.11.0
+  ollama:     ollama/ollama:latest
+  openwebui:  ghcr.io/open-webui/open-webui:main
+
+models:
+  llm:       {{ recipe.llm_model if recipe is defined else 'qwen2.5:3b-instruct-q4_K_M' }}
+  embedding: {{ recipe.embedding_model if recipe is defined else 'nomic-embed-text' }}
+
+resources:
+  ollama:
+    limits:
+      memory: 8Gi
+      {%- if recipe is defined and recipe.gpu_enabled %}
+      nvidia.com/gpu: 1
+      {%- endif %}
+  app:
+    limits: { memory: 1Gi, cpu: "1" }
+
+persistence:
+  qdrant: { size: 10Gi }
+  ollama: { size: 50Gi }
+
+service:
+  openwebui:
+    type: LoadBalancer
+    port: 80

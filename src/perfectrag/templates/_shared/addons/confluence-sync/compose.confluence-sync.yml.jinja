@@ -1,0 +1,24 @@
+services:
+  confluence-sync:
+    image: python:3.11-slim
+    restart: unless-stopped
+    depends_on:
+      - qdrant
+      - ollama
+    environment:
+      - CONFLUENCE_URL=${CONFLUENCE_URL}
+      - CONFLUENCE_USER=${CONFLUENCE_USER}
+      - CONFLUENCE_API_TOKEN=${CONFLUENCE_API_TOKEN}
+      - CONFLUENCE_SPACE=${CONFLUENCE_SPACE}
+      - OLLAMA_URL=http://ollama:11434
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-documents}
+      - EMBEDDING_MODEL={{ recipe.embedding_model if recipe is defined else 'nomic-embed-text' }}
+      - SYNC_SCHEDULE=${CONFLUENCE_SCHEDULE:-0 */6 * * *}
+    working_dir: /app
+    command: >
+      sh -c "pip install --quiet atlassian-python-api beautifulsoup4 qdrant-client httpx croniter &&
+             python /app/confluence_sync.py"
+    volumes:
+      - ./confluence-sync/confluence_sync.py:/app/confluence_sync.py:ro
+      - ./volumes/confluence-sync:/app/state

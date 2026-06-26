@@ -11,7 +11,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from perfectrag import hardware, recipes, scaffolder, wizard
+from perfectrag import deployer, hardware, orchestrate, recipes, scaffolder, wizard
+from perfectrag import doctor as _doctor
+from perfectrag.addons import REGISTRY as ADDON_REGISTRY
+from perfectrag.addons import add_addon_to_project, list_installed
 from perfectrag.mcp_registry import REGISTRY, add_mcp_to_project
 from perfectrag.skills import add_skill_to_project, list_bundled_skills
 
@@ -42,6 +45,17 @@ def init(
         None, "--template", "-t",
         help="Override template gợi ý (custom-naive-rag, ragflow-stack, lightrag-stack, dify-stack)",
     ),
+    with_addons: str | None = typer.Option(
+        None, "--with", "-w",
+        help="Danh sách addons comma-separated: eval,observability,context-eng,ingest-worker,paperclip",
+    ),
+    advise_flag: bool = typer.Option(
+        False, "--advise/--no-advise",
+        help="Dùng Gemini để refine recipe (cần `perfectrag add key gemini`)",
+    ),
+    description: str | None = typer.Option(
+        None, "--describe", help="Mô tả use-case bằng text (gợi ý: dùng chung với --advise)",
+    ),
     force: bool = typer.Option(False, "--force", help="Ghi đè nếu project_dir đã có"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview recipe, không scaffold"),
 ) -> None:
@@ -63,6 +77,22 @@ def init(
             raise typer.Exit(1)
         recipe.template = template
         recipe.notes.append(f"Template được override bằng --template={template}")
+
+    # Optional Gemini refinement
+    if advise_flag:
+        from perfectrag import advisor as _advisor
+        desc = description or (
+            f"use_case={answers.use_case}, modality={answers.modality}, "
+            f"corpus_size={answers.corpus_size}, user_scale={answers.user_scale}, "
+            f"multi_hop={answers.multi_hop}, privacy={answers.privacy}"
+        )
+        advice = _advisor.advise(desc, hw, recipe)
+        if advice.used_provider:
+            console.print(Panel.fit(advice.reasoning, title="Gemini advisor"))
+            recipe = advice.recipe
+        else:
+            console.print(f"[yellow]Advisor skipped: {advice.reasoning}[/yellow]")
+
     _show_recipe(recipe)
 
     if dry_run:
@@ -74,12 +104,27 @@ def init(
         raise typer.Exit(1)
 
     scaffolder.render(recipe, hw, answers, project_dir, force=force)
+
+    installed_addons: list[str] = []
+    if with_addons:
+        template_vars = recipe.as_template_vars(hw, answers)
+        template_vars["project_name"] = project_dir.name
+        for addon_name in (a.strip() for a in with_addons.split(",") if a.strip()):
+            if addon_name not in ADDON_REGISTRY:
+                console.print(f"[red]Unknown addon '{addon_name}'. See `perfectrag list addons`.[/red]")
+                raise typer.Exit(1)
+            add_addon_to_project(addon_name, project_dir, template_vars)
+            installed_addons.append(addon_name)
+            console.print(f"[green]Installed addon '{addon_name}'[/green]")
+
+    addons_hint = (f"\nAddons: {', '.join(installed_addons)}" if installed_addons else "")
     console.print(
         Panel.fit(
             f"[green]Done![/green]\n\n"
             f"cd {project_dir}\n"
-            f"docker compose up -d\n\n"
-            f"Edit [cyan]mcp.yaml[/cyan] to add tools, [cyan]skills/[/cyan] to add skills.",
+            f"perfectrag up              # or: docker compose up -d\n\n"
+            f"Edit [cyan]mcp.yaml[/cyan] to add tools, [cyan]skills/[/cyan] to add skills."
+            f"{addons_hint}",
             title="Next steps",
         )
     )
@@ -87,42 +132,426 @@ def init(
 
 @app.command("add")
 def add_cmd(
-    kind: str = typer.Argument(..., help="'mcp' hoặc 'skill'"),
-    name: str = typer.Argument(..., help="Tên MCP server / skill"),
+    kind: str = typer.Argument(..., help="'mcp', 'skill', 'addon', hoặc 'key'"),
+    name: str = typer.Argument(..., help="Tên MCP server / skill / addon / provider"),
+    value: str | None = typer.Argument(None, help="API key value (khi kind=key)"),
     project_dir: Path = typer.Option(Path("."), "--project", "-p", help="Project dir"),
 ) -> None:
-    """Add MCP server hoặc skill vào project đã sinh."""
+    """Add MCP server, skill, addon, hoặc API key vào perfectrag."""
+    from perfectrag import keys as _keys
     if kind == "mcp":
         add_mcp_to_project(name, project_dir)
         console.print(f"[green]Added MCP '{name}' vào {project_dir}/mcp.yaml[/green]")
     elif kind == "skill":
         add_skill_to_project(name, project_dir)
         console.print(f"[green]Added skill '{name}' vào {project_dir}/skills/[/green]")
+    elif kind == "addon":
+        template_vars = _restore_template_vars(project_dir)
+        spec = add_addon_to_project(name, project_dir, template_vars)
+        console.print(f"[green]Installed addon '{spec.name}': {spec.description}[/green]")
+        if spec.env_prompts:
+            console.print(
+                f"[yellow]Addon requires env vars: {', '.join(spec.env_prompts)}. "
+                f"Set them in [cyan].env[/cyan] before `perfectrag up`.[/yellow]"
+            )
+        if spec.post_up_notes:
+            console.print(f"[dim]{spec.post_up_notes}[/dim]")
+    elif kind == "key":
+        if not value:
+            console.print("[red]Provide the key value: `perfectrag add key gemini AIzaSy...`[/red]")
+            raise typer.Exit(1)
+        _keys.set_key(name, value)
+        console.print(f"[green]Saved {name} key to ~/.perfectrag/keys.yml (chmod 600).[/green]")
     else:
-        console.print(f"[red]Unknown kind: {kind}. Dùng 'mcp' hoặc 'skill'.[/red]")
+        console.print(f"[red]Unknown kind: {kind}. Dùng 'mcp', 'skill', 'addon', 'key'.[/red]")
         raise typer.Exit(1)
+
+
+@app.command("remove")
+def remove_cmd(
+    kind: str = typer.Argument(..., help="'key' (mcp/skill/addon removal not yet supported)"),
+    name: str = typer.Argument(...),
+) -> None:
+    """Remove an API key."""
+    if kind == "key":
+        from perfectrag import keys as _keys
+        removed = _keys.remove_key(name)
+        if removed:
+            console.print(f"[green]Removed {name} key.[/green]")
+        else:
+            console.print(f"[yellow]No key stored for {name}.[/yellow]")
+    else:
+        console.print("[red]Only 'key' supported currently.[/red]")
+        raise typer.Exit(1)
+
+
+def _restore_template_vars(project_dir: Path) -> dict:
+    """Rebuild recipe/hw/answers namespace for addon rendering in a post-scaffold project."""
+    answers_file = project_dir / ".copier-answers.yml"
+    template_vars: dict = {"project_name": project_dir.name}
+    if answers_file.exists():
+        data = yaml.safe_load(answers_file.read_text(encoding="utf-8")) or {}
+        # Copier stores all `data` keys flat; we passed recipe/hw/answers as nested dicts
+        template_vars.update(data)
+    if "hw" not in template_vars:
+        template_vars["hw"] = hardware.detect().as_dict()
+    return template_vars
 
 
 @app.command("list")
 def list_cmd(
-    what: str = typer.Argument(..., help="'templates', 'mcp', 'skills'"),
+    what: str = typer.Argument(..., help="'templates', 'mcp', 'skills', 'addons', 'installed', 'keys'"),
+    project_dir: Path = typer.Option(Path("."), "--project", "-p", help="Project dir (for 'installed')"),
 ) -> None:
-    """Liệt kê templates / MCP servers / skills có sẵn."""
+    """Liệt kê templates / MCP / skills / addons / keys có sẵn."""
     if what == "templates":
         _list_templates()
     elif what == "mcp":
         _list_mcp()
     elif what == "skills":
         _list_skills()
+    elif what == "addons":
+        _list_addons()
+    elif what == "installed":
+        _list_installed(project_dir)
+    elif what == "keys":
+        _list_provider_keys()
     else:
-        console.print(f"[red]Unknown: {what}. Dùng 'templates', 'mcp' hoặc 'skills'.[/red]")
+        console.print(f"[red]Unknown: {what}. Dùng templates/mcp/skills/addons/installed/keys.[/red]")
         raise typer.Exit(1)
+
+
+def _list_provider_keys() -> None:
+    from perfectrag import keys as _keys
+    table = Table(title="Provider API keys (~/.perfectrag/keys.yml)")
+    table.add_column("Provider", style="cyan")
+    table.add_column("Value")
+    for prov, val in _keys.list_keys().items():
+        table.add_row(prov, val or "[dim]not set[/dim]")
+    console.print(table)
 
 
 @app.command()
 def hw() -> None:
     """Chỉ detect + show hardware, không làm gì khác."""
     _show_hardware(hardware.detect())
+
+
+@app.command()
+def up(
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+    build: bool = typer.Option(False, "--build", help="Rebuild images trước khi up"),
+    wait: bool = typer.Option(True, "--wait/--no-wait", help="Chờ healthchecks pass"),
+    timeout: int = typer.Option(300, "--timeout", help="Seconds chờ healthy"),
+) -> None:
+    """Start tất cả services (base + installed addons) và chờ healthy."""
+    if not orchestrate.docker_available():
+        console.print("[red]docker không có trên PATH. Cài Docker Desktop/Engine.[/red]")
+        raise typer.Exit(1)
+    console.print(f"[cyan]Starting services in {project_dir.resolve()}...[/cyan]")
+    code = orchestrate.up(project_dir, detach=True, build=build)
+    if code != 0:
+        raise typer.Exit(code)
+    if wait:
+        console.print(f"[cyan]Waiting up to {timeout}s for services to become healthy...[/cyan]")
+        healthy, rows = orchestrate.wait_healthy(project_dir, timeout=timeout)
+        _render_ps_table(rows)
+        if not healthy:
+            console.print(f"[yellow]Some services did not become healthy in {timeout}s — see `perfectrag logs`.[/yellow]")
+            raise typer.Exit(2)
+    console.print("[green]All services up.[/green]")
+    _show_dashboards(project_dir)
+
+
+@app.command()
+def down(
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+    volumes: bool = typer.Option(False, "-v", "--volumes", help="Xóa volumes"),
+) -> None:
+    """Stop và remove services (base + addons)."""
+    raise typer.Exit(orchestrate.down(project_dir, volumes=volumes))
+
+
+@app.command()
+def logs(
+    service: str | None = typer.Argument(None, help="Service name, hoặc bỏ trống để xem all"),
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+    follow: bool = typer.Option(False, "-f", "--follow"),
+    tail: int = typer.Option(100, "--tail"),
+) -> None:
+    """Tail service logs."""
+    raise typer.Exit(orchestrate.logs(project_dir, service=service, follow=follow, tail=tail))
+
+
+key_app = typer.Typer(help="Manage RAG-access API keys (sk-rag-*) for a project's Query API.")
+app.add_typer(key_app, name="key")
+
+
+@key_app.command("issue")
+def key_issue(
+    name: str = typer.Option(..., "--name", "-n", help="Human label, e.g. 'production app'"),
+    rate: int = typer.Option(60, "--rate", help="Requests/minute limit"),
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+) -> None:
+    """Issue a new sk-rag-* key in the project's SQLite."""
+    from perfectrag import api_keys
+    k = api_keys.issue(project_dir, name, rate)
+    console.print(Panel.fit(
+        f"[green]Key issued (copy it — shown once):[/green]\n\n"
+        f"[bold]{k.key}[/bold]\n\n"
+        f"Name: {k.name}\nRate: {k.rate_per_minute}/min\nCreated: {k.created_at}\n\n"
+        f"Use as: [cyan]Authorization: Bearer {k.key}[/cyan]",
+        title="API key",
+    ))
+
+
+@key_app.command("list")
+def key_list(
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+) -> None:
+    """List all RAG-access keys (values masked)."""
+    from perfectrag import api_keys
+    keys_list = api_keys.list_all(project_dir)
+    if not keys_list:
+        console.print(f"[dim]No keys issued for {project_dir}.[/dim]")
+        return
+    table = Table(title=f"API keys ({project_dir}/.perfectrag/api_keys.db)")
+    table.add_column("Masked key", style="cyan")
+    table.add_column("Name")
+    table.add_column("Rate/min")
+    table.add_column("Status")
+    table.add_column("Created")
+    for k in keys_list:
+        masked = f"sk-rag-…{k.key[-6:]}" if len(k.key) > 10 else k.key
+        status = "[red]revoked[/red]" if k.revoked else "[green]active[/green]"
+        table.add_row(masked, k.name, str(k.rate_per_minute), status, k.created_at)
+    console.print(table)
+
+
+@key_app.command("revoke")
+def key_revoke(
+    suffix: str = typer.Argument(..., help="Last chars of key (matches any key ending with this)"),
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+) -> None:
+    """Revoke a key by its trailing characters."""
+    from perfectrag import api_keys
+    rows = api_keys.list_all(project_dir)
+    matches = [k for k in rows if k.key.endswith(suffix)]
+    if not matches:
+        console.print(f"[red]No key ending with '{suffix}' found.[/red]")
+        raise typer.Exit(1)
+    for k in matches:
+        api_keys.revoke(project_dir, k.key)
+        console.print(f"[green]Revoked key …{k.key[-6:]} ({k.name})[/green]")
+
+
+@key_app.command("usage")
+def key_usage(
+    suffix: str = typer.Argument(...),
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+) -> None:
+    """Show usage for a key."""
+    from perfectrag import api_keys
+    rows = api_keys.list_all(project_dir)
+    matches = [k for k in rows if k.key.endswith(suffix)]
+    if not matches:
+        console.print(f"[red]No key ending with '{suffix}'[/red]")
+        raise typer.Exit(1)
+    summary = api_keys.usage_summary(project_dir, matches[0].key)
+    t = Table(title=f"Usage for …{matches[0].key[-6:]}")
+    t.add_column("Metric", style="cyan")
+    t.add_column("Value")
+    for k, v in summary.items():
+        t.add_row(k, str(v))
+    console.print(t)
+
+
+@app.command()
+def run(
+    config: Path = typer.Option(Path("perfectrag.yml"), "--config", "-c"),
+    ingest_path: Path | None = typer.Option(None, "--ingest", help="Ingest a file/dir then exit"),
+    query_text: str | None = typer.Option(None, "--query", "-q"),
+    serve: bool = typer.Option(False, "--serve", help="Start FastAPI query-API server"),
+    port: int = typer.Option(8000, "--port"),
+    host: str = typer.Option("127.0.0.1", "--host"),
+) -> None:
+    """Embedded library mode — no Docker. Ingest, query, or serve."""
+    from perfectrag import RAG
+
+    if not config.exists():
+        console.print(f"[red]Config not found: {config}[/red]")
+        raise typer.Exit(1)
+    rag = RAG.from_config(config)
+
+    if ingest_path is not None:
+        n = rag.ingest(ingest_path)
+        console.print(f"[green]Ingested {n} chunks from {ingest_path}[/green]")
+    if query_text:
+        result = rag.query(query_text)
+        console.print(Panel.fit(result.answer, title="Answer"))
+        for h in result.hits[:3]:
+            console.print(f"[dim]· {h.chunk.source}  (score {h.score:.3f})[/dim]")
+        return
+    if serve:
+        try:
+            import uvicorn
+        except ImportError:
+            console.print("[red]uvicorn missing. `pip install 'perfectrag[web]'`[/red]")
+            raise typer.Exit(1)
+        import os
+        os.environ["PERFECTRAG_CONFIG"] = str(config.resolve())
+        uvicorn.run("perfectrag.query_api:app", host=host, port=port, log_level="info")
+        return
+    console.print("[yellow]Pass --ingest, --query, or --serve.[/yellow]")
+
+
+@app.command()
+def advise(
+    description: str = typer.Argument(..., help="Free-form description of your RAG use-case"),
+) -> None:
+    """Ask Gemini to refine a rule-based recipe given a free-form description."""
+    from perfectrag import advisor as _advisor
+
+    hw = hardware.detect()
+    base_answers = recipes.Answers(
+        use_case="qa_docs", modality=["text"], privacy="fully_local",
+        multi_hop=False, corpus_size="small", user_scale="solo",
+    )
+    base = recipes.recommend(base_answers, hw)
+    advice = _advisor.advise(description, hw, base)
+
+    console.print(Panel.fit(advice.reasoning,
+                            title=f"Advisor ({advice.used_provider or 'rule-based fallback'})"))
+    if advice.changes:
+        t = Table(title="Changes")
+        t.add_column("Field", style="cyan")
+        t.add_column("From")
+        t.add_column("To", style="green")
+        for f, diff in advice.changes.items():
+            t.add_row(f, str(diff.get("from")), str(diff.get("to")))
+        console.print(t)
+    _show_recipe(advice.recipe)
+
+
+@app.command()
+def web(
+    port: int = typer.Option(7777, "--port", help="Backend port"),
+    open_browser: bool = typer.Option(True, "--open/--no-open"),
+    host: str = typer.Option("127.0.0.1", "--host"),
+) -> None:
+    """Start FastAPI backend for the Next.js UI. Run `cd ui && pnpm dev` separately (port 3001)."""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]uvicorn not installed. Install with `pip install 'perfectrag[web]'`.[/red]")
+        raise typer.Exit(1)
+    if open_browser:
+        import webbrowser
+        console.print("[cyan]UI: http://localhost:3001 (run `cd ui && pnpm dev` first)[/cyan]")
+        console.print(f"[cyan]API: http://{host}:{port}/docs[/cyan]")
+        webbrowser.open_new_tab("http://localhost:3001")
+    uvicorn.run("perfectrag.webserver:app", host=host, port=port, log_level="info")
+
+
+@app.command()
+def deploy(
+    target: str = typer.Argument(..., help="helm, flyio, hoặc railway"),
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+    out: Path = typer.Option(Path("./deploy-out"), "--out", "-o"),
+    template: str | None = typer.Option(None, "--template", "-t",
+                                        help="Override template (default: từ .copier-answers.yml)"),
+) -> None:
+    """Render deploy assets (Helm chart, fly.toml, railway.json) cho production."""
+    template_vars = _restore_template_vars(project_dir)
+    tmpl = template or (template_vars.get("recipe", {}) or {}).get("template", "custom-naive-rag")
+    available = deployer.available_targets(tmpl)
+    if target not in available:
+        console.print(f"[red]No {target} assets for template '{tmpl}'. Available: {available}[/red]")
+        raise typer.Exit(1)
+    deployer.render(target=target, template=tmpl, out_dir=out, template_vars=template_vars)
+    console.print(f"[green]Rendered {target} deploy assets for '{tmpl}' into {out.resolve()}[/green]")
+    console.print(f"[dim]Next: review files, run `helm lint {out}` / `fly deploy` / `railway up`.[/dim]")
+
+
+@app.command()
+def eval(
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+    dataset: Path = typer.Option(
+        Path("eval/datasets/sample-qa.jsonl"),
+        "--dataset", "-d",
+        help="JSONL dataset relative to project dir",
+    ),
+    tier: str = typer.Option("ragas", "--tier", help="ragas|deepeval"),
+) -> None:
+    """Run RAG quality eval via the `eval` addon (must be installed)."""
+    if "eval" not in list_installed(project_dir):
+        console.print("[red]Eval addon not installed. Run `perfectrag add addon eval -p .`[/red]")
+        raise typer.Exit(1)
+    if not orchestrate.docker_available():
+        console.print("[red]docker not on PATH.[/red]")
+        raise typer.Exit(1)
+    import shutil
+    docker = shutil.which("docker") or shutil.which("docker.exe")
+    import subprocess
+    # Path inside container
+    container_dataset = f"/app/datasets/{dataset.name}"
+    cmd = [
+        docker, "compose",
+        "-f", "docker-compose.yml", "-f", "compose.eval.yml",
+        "run", "--rm", "eval",
+        "python", "runner.py", "--dataset", container_dataset, "--tier", tier,
+    ]
+    code = subprocess.run(cmd, cwd=project_dir).returncode
+    raise typer.Exit(code)
+
+
+@app.command()
+def doctor(
+    project_dir: Path = typer.Option(Path("."), "--project", "-p"),
+) -> None:
+    """Chẩn đoán project: Docker, ports, disk, services, Ollama models."""
+    results = _doctor.run_all(project_dir)
+    table = Table(title="perfectrag doctor", show_header=True)
+    table.add_column("Check", style="cyan")
+    table.add_column("Status")
+    table.add_column("Detail")
+    has_fail = False
+    for r in results:
+        color = {"ok": "green", "warn": "yellow", "fail": "red"}.get(r.status, "white")
+        table.add_row(r.name, f"[{color}]{r.status.upper()}[/{color}]", r.detail)
+        if r.status == "fail":
+            has_fail = True
+    console.print(table)
+    raise typer.Exit(1 if has_fail else 0)
+
+
+def _render_ps_table(rows: list[dict]) -> None:
+    if not rows:
+        return
+    table = Table(title="Services")
+    table.add_column("Name", style="cyan")
+    table.add_column("State")
+    table.add_column("Health")
+    table.add_column("Ports")
+    for r in rows:
+        table.add_row(
+            r.get("Name", "?"),
+            r.get("State", ""),
+            r.get("Health", "") or "—",
+            r.get("Publishers", "") if isinstance(r.get("Publishers"), str) else "",
+        )
+    console.print(table)
+
+
+def _show_dashboards(project_dir: Path) -> None:
+    installed = list_installed(project_dir)
+    urls = []
+    for name in installed:
+        spec = ADDON_REGISTRY.get(name)
+        if spec and spec.dashboard_url:
+            urls.append(f"• {name}: {spec.dashboard_url}")
+    if urls:
+        console.print(Panel.fit("\n".join(urls), title="Addon dashboards"))
 
 
 # --- helpers ---
@@ -189,6 +618,36 @@ def _list_skills() -> None:
     table.add_column("Description")
     for name, desc in list_bundled_skills().items():
         table.add_row(name, desc)
+    console.print(table)
+
+
+def _list_addons() -> None:
+    table = Table(title="Addons available")
+    table.add_column("Name", style="cyan")
+    table.add_column("Description")
+    table.add_column("Requires env")
+    table.add_column("Dashboard")
+    for name, spec in ADDON_REGISTRY.items():
+        table.add_row(
+            name,
+            spec.description,
+            ", ".join(spec.env_prompts) or "—",
+            spec.dashboard_url or "—",
+        )
+    console.print(table)
+
+
+def _list_installed(project_dir: Path) -> None:
+    installed = list_installed(project_dir)
+    if not installed:
+        console.print(f"[dim]No addons installed in {project_dir}.[/dim]")
+        return
+    table = Table(title=f"Addons installed in {project_dir}")
+    table.add_column("Name", style="cyan")
+    table.add_column("Compose file")
+    for name in installed:
+        spec = ADDON_REGISTRY.get(name)
+        table.add_row(name, spec.compose_file if spec else "—")
     console.print(table)
 
 

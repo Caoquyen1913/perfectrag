@@ -1,0 +1,16 @@
+services:
+  paperclip:
+    image: paperclipai/paperclip:latest
+    restart: unless-stopped
+    environment:
+      - PAPERCLIP_CONFIG=/app/config.json
+      - PAPERCLIP_SKILLS_DIR=/app/skills
+      # If observability addon is installed, route LLM calls through LiteLLM
+      - OPENAI_API_BASE=${PAPERCLIP_LLM_BASE:-http://litellm:4000/v1}
+      - OPENAI_API_KEY=${PAPERCLIP_LLM_API_KEY:-${LITELLM_MASTER_KEY:-sk-local}}
+    ports:
+      - "8888:8080"
+    volumes:
+      - ./paperclip/config.json:/app/config.json:ro
+      - ./skills:/app/skills:ro
+      - ./volumes/paperclip:/app/state

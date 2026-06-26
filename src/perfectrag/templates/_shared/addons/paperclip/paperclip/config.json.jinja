@@ -1,0 +1,35 @@
+{
+  "name": "{{ project_name if project_name is defined else 'perfectrag-agents' }}",
+  "llm": {
+    "model": "default",
+    "api_base": "${OPENAI_API_BASE}",
+    "api_key": "${OPENAI_API_KEY}"
+  },
+  "tools": [
+    {
+      "name": "rag_query",
+      "description": "Query the RAG knowledge base for relevant passages. Input: a natural-language question. Returns: answer + sources.",
+      "type": "http",
+      {%- set template = recipe.template if recipe is defined else 'custom-naive-rag' %}
+      {%- if template == 'ragflow-stack' %}
+      "url": "http://ragflow:9380/v1/retrieval/search",
+      "method": "POST",
+      "body_template": {"question": "{input}"}
+      {%- elif template == 'lightrag-stack' %}
+      "url": "http://lightrag:9621/query",
+      "method": "POST",
+      "body_template": {"query": "{input}", "mode": "hybrid"}
+      {%- elif template == 'dify-stack' %}
+      "url": "http://api:5001/v1/chat-messages",
+      "method": "POST",
+      "body_template": {"query": "{input}", "response_mode": "blocking", "user": "paperclip"}
+      {%- else %}
+      "url": "http://app:8000/query",
+      "method": "POST",
+      "body_template": {"question": "{input}"}
+      {%- endif %}
+    }
+  ],
+  "skills_dir": "/app/skills",
+  "note": "Edit to add more tools. Skills folder auto-loaded as agent prompt library."
+}

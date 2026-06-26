@@ -1,0 +1,20 @@
+services:
+  eval:
+    build:
+      context: ./eval
+      dockerfile: Dockerfile
+    restart: "no"
+    depends_on:
+      - app
+    environment:
+      - RAG_API_URL={{ recipe.extras.rag_api_url if recipe is defined else 'http://app:8000' }}
+      - OLLAMA_URL=http://ollama:11434
+      - JUDGE_MODEL={{ recipe.llm_model if recipe is defined else 'qwen2.5:3b-instruct-q4_K_M' }}
+      - DATASETS_DIR=/app/datasets
+      - REPORTS_DIR=/app/reports
+      - TIER=${EVAL_TIER:-ragas}
+    ports:
+      - "8081:8080"   # report viewer
+    volumes:
+      - ./eval/datasets:/app/datasets
+      - ./eval/reports:/app/reports

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": { "builder": "DOCKERFILE", "dockerfilePath": "app/Dockerfile" },
+  "deploy": {
+    "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE"
+  },
+  "services": [
+    {
+      "name": "app",
+      "envs": {
+        "LLM_MODEL": "{{ recipe.llm_model if recipe is defined else 'qwen2.5:3b-instruct-q4_K_M' }}",
+        "EMBEDDING_MODEL": "{{ recipe.embedding_model if recipe is defined else 'nomic-embed-text' }}"
+      }
+    },
+    { "name": "qdrant", "source": { "image": "qdrant/qdrant:v1.11.0" } },
+    { "name": "ollama", "source": { "image": "ollama/ollama:latest" } }
+  ]
+}
