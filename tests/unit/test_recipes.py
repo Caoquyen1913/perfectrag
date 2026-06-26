@@ -199,6 +199,29 @@ def test_needs_citations_extra():
     assert r.extras["enable_citations"] is True
 
 
+def test_qa_docs_enables_parent_retrieval():
+    r = recommend(_answers(use_case="qa_docs"), _hw("gpu-8gb"))
+    assert r.extras["parent_chunk_size"] == r.chunk_size * 4
+
+
+def test_multi_hop_enables_expansion_and_corrective():
+    r = recommend(_answers(multi_hop=True), _hw("gpu-12gb"))
+    assert r.extras["query_expansion"] == 3
+    assert r.extras["corrective"] is True
+
+
+def test_accuracy_priority_enables_expansion():
+    r = recommend(_answers(priority="accuracy"), _hw("gpu-8gb"))
+    assert r.extras["query_expansion"] == 3
+    assert r.extras["corrective"] is True
+
+
+def test_default_disables_expensive_retrieval():
+    r = recommend(_answers(), _hw("gpu-8gb"))
+    assert r.extras["query_expansion"] == 0
+    assert r.extras["corrective"] is False
+
+
 def test_new_answer_fields_default_safely():
     """Old-style Answers (6 fields) still construct and recommend."""
     r = recommend(_answers(), _hw("gpu-8gb"))

@@ -243,6 +243,12 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
         "enable_citations": answers.needs_citations,
         # Changing corpus → suggest the scheduled ingest-worker addon.
         "enable_ingest_worker": answers.freshness in ("periodic", "streaming"),
+        # Parent-document retrieval (free, no LLM) — good default for doc Q&A.
+        "parent_chunk_size": chunk_size * 4 if answers.use_case == "qa_docs" else 0,
+        # Query expansion + corrective loop cost LLM calls/query → only when the
+        # user wants accuracy (multi-hop questions or priority=accuracy).
+        "query_expansion": 3 if (answers.multi_hop or answers.priority == "accuracy") else 0,
+        "corrective": answers.multi_hop or answers.priority == "accuracy",
     }
     if answers.freshness in ("periodic", "streaming"):
         notes.append("Dữ liệu cập nhật thường xuyên → cân nhắc addon `ingest-worker`.")

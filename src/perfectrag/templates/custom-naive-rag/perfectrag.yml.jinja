@@ -9,6 +9,18 @@ top_k: 5
 # before embedding (Anthropic). Better recall; costs 1 LLM call/chunk at ingest.
 contextual: true
 {%- endif %}
+{%- if recipe.extras.parent_chunk_size %}
+# Parent-document retrieval: embed small chunks, feed the larger parent to the LLM.
+parent_chunk_size: {{ recipe.extras.parent_chunk_size }}
+{%- endif %}
+{%- if recipe.extras.query_expansion %}
+# Query expansion: N alternate phrasings per query, fused with RRF (better recall).
+query_expansion: {{ recipe.extras.query_expansion }}
+{%- endif %}
+{%- if recipe.extras.corrective %}
+# Corrective RAG: grade results, re-retrieve once if they look irrelevant.
+corrective: true
+{%- endif %}
 
 store:
   name: {{ recipe.vector_db }}
