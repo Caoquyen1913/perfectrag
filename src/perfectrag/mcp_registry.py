@@ -107,6 +107,27 @@ REGISTRY: dict[str, dict] = {
         "args": ["-y", "@modelcontextprotocol/server-slack"],
         "env": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
     },
+    # --- Code intelligence (for code_rag / Claude Code) ---
+    "serena": {
+        "description": "Serena — LSP-based code intelligence: find_symbol, find_referencing_symbols, "
+                       "call hierarchy, symbol-level edits (30+ ngôn ngữ, không cần embeddings)",
+        "command": "uvx",
+        "args": ["--from", "git+https://github.com/oraios/serena", "serena-mcp-server"],
+        "env": [],
+    },
+    "ast-grep": {
+        "description": "ast-grep — structural AST search/rewrite theo pattern (find_code, dump_syntax_tree)",
+        "command": "uvx",
+        "args": ["ast-grep-mcp"],
+        "env": [],
+    },
+    "claude-context": {
+        "description": "Claude Context (Zilliz) — semantic code search: AST chunking + Milvus, "
+                       "hybrid dense+BM25, incremental reindex (cho repo lớn)",
+        "command": "npx",
+        "args": ["-y", "@zilliz/claude-context-mcp@latest"],
+        "env": ["OPENAI_API_KEY", "MILVUS_ADDRESS"],
+    },
 }
 
 
