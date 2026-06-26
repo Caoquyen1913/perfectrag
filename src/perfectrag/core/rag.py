@@ -78,6 +78,7 @@ class RAG:
         chunk_size: int = 512,
         top_k: int = 5,
         contextual: bool = False,
+        query_expansion: int = 0,
     ):
         self.store = store
         self.embedder = embedder
@@ -91,6 +92,10 @@ class RAG:
         # sentence to each chunk before embedding. Cuts retrieval failures a lot
         # at the cost of one cheap LLM call per chunk at ingest time.
         self.contextual = contextual
+        # Query expansion: generate N alternate phrasings per query, retrieve for
+        # each, and fuse with Reciprocal Rank Fusion. Helps recall on terse or
+        # multi-hop questions. 0 disables (single-query path).
+        self.query_expansion = query_expansion
 
     @classmethod
     def from_config(cls, path: str | Path) -> RAG:
@@ -126,6 +131,7 @@ class RAG:
             chunk_size=int(cfg.get("chunk_size", 512)),
             top_k=int(cfg.get("top_k", 5)),
             contextual=bool(cfg.get("contextual", False)),
+            query_expansion=int(cfg.get("query_expansion", 0)),
         )
 
     # --- ingestion ---
@@ -187,15 +193,50 @@ class RAG:
     # --- query ---
 
     def retrieve(self, question: str, k: int | None = None) -> list[Hit]:
-        qvec = self.embedder.embed(question)
         k = k or self.top_k
         retrieval_k = k * 3 if self.reranker else k
-        hits = self.store.search(self.collection, qvec, retrieval_k)
+        if self.query_expansion and self.llm is not None:
+            hits = self._multi_query_search(question, retrieval_k)
+        else:
+            qvec = self.embedder.embed(question)
+            hits = self.store.search(self.collection, qvec, retrieval_k)
         if self.reranker and hits:
             docs = [h.chunk.text for h in hits]
             ranked = self.reranker.rerank(question, docs, top_k=k)
             return [Hit(chunk=hits[i].chunk, score=s) for i, s in ranked]
         return hits[:k]
+
+    def _multi_query_search(self, question: str, retrieval_k: int) -> list[Hit]:
+        """Retrieve for the original + expanded queries, fuse with RRF."""
+        from perfectrag.core.fusion import reciprocal_rank_fusion
+
+        queries = [question, *self._expand_query(question, self.query_expansion)]
+        by_id: dict[str, Hit] = {}
+        rankings: list[list[str]] = []
+        for q in queries:
+            qvec = self.embedder.embed(q)
+            hits = self.store.search(self.collection, qvec, retrieval_k)
+            rankings.append([h.chunk.id for h in hits])
+            for h in hits:
+                by_id.setdefault(h.chunk.id, h)
+        fused_ids = reciprocal_rank_fusion(rankings)
+        return [by_id[i] for i in fused_ids]
+
+    def _expand_query(self, question: str, n: int) -> list[str]:
+        """Ask the LLM for n alternate phrasings; empty list on any failure."""
+        if self.llm is None or n <= 0:
+            return []
+        prompt = (
+            f"Rewrite this search query into {n} alternative phrasings that retrieve "
+            "the same information. One per line, no numbering, no extra text.\n"
+            f"Query: {question}"
+        )
+        try:
+            out = self.llm.generate(prompt, max_tokens=120)
+        except Exception:
+            return []
+        lines = [ln.strip("-*0123456789. ").strip() for ln in out.splitlines() if ln.strip()]
+        return lines[:n]
 
     def query(self, question: str, k: int | None = None) -> QueryResult:
         hits = self.retrieve(question, k)
