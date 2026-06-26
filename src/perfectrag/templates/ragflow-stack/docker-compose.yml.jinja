@@ -68,8 +68,8 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: |
       "sleep 10 && \
-       OLLAMA_HOST=ollama:11434 ollama pull {{ recipe.llm_model }} && \
-       OLLAMA_HOST=ollama:11434 ollama pull nomic-embed-text"
+       OLLAMA_HOST=ollama:11434 ollama pull nomic-embed-text{% if recipe.llm_runtime not in ['gemini', 'anthropic', 'openai'] %} && \
+       OLLAMA_HOST=ollama:11434 ollama pull {{ recipe.llm_model }}{% endif %}"
     restart: "no"
 
   ragflow:

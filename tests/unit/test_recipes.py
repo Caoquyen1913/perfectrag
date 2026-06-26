@@ -116,6 +116,45 @@ def test_llm_sizing_by_tier(tier, expected_llm_prefix):
     assert r.llm_model.startswith(expected_llm_prefix), r.llm_model
 
 
+def test_hybrid_api_on_weak_tier_uses_cloud_llm():
+    """privacy=hybrid_api + weak hardware → cloud LLM instead of weak local."""
+    r = recommend(_answers(privacy="hybrid_api"), _hw("cpu"))
+    assert r.llm_runtime == "gemini"
+    assert r.llm_model == "gemini-2.0-flash"
+    assert any("hybrid_api" in n for n in r.notes)
+
+
+def test_hybrid_api_on_apple_low_uses_cloud_llm():
+    r = recommend(_answers(privacy="hybrid_api"), _hw("apple-low"))
+    assert r.llm_runtime == "gemini"
+
+
+def test_hybrid_api_on_strong_gpu_keeps_local():
+    """Strong GPU runs local fine even when cloud is allowed."""
+    r = recommend(_answers(privacy="hybrid_api"), _hw("gpu-12gb"))
+    assert r.llm_runtime in ("ollama", "vllm")
+    assert r.llm_model.startswith("qwen2.5")
+
+
+def test_fully_local_weak_tier_stays_local():
+    """Default privacy must never reach for the cloud."""
+    r = recommend(_answers(privacy="fully_local"), _hw("cpu"))
+    assert r.llm_runtime == "llamacpp"
+    assert r.llm_model.startswith("qwen2.5")
+
+
+def test_chunking_default_is_recursive_512():
+    r = recommend(_answers(), _hw("gpu-8gb"))
+    assert r.chunk_strategy == "recursive"
+    assert r.chunk_size == 512
+
+
+def test_code_modality_uses_larger_chunks():
+    r = recommend(_answers(use_case="code_rag", modality=["code"]), _hw("gpu-8gb"))
+    assert r.chunk_strategy == "recursive"
+    assert r.chunk_size == 768
+
+
 def test_recipe_template_vars_shape():
     hw = _hw("gpu-8gb")
     answers = _answers()

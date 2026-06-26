@@ -7,7 +7,7 @@ wizard's final confirmation step.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 from perfectrag.hardware import HardwareProfile
 
@@ -15,6 +15,10 @@ UseCase = Literal["qa_docs", "graphrag", "multimodal", "code_rag", "agent_workfl
 Privacy = Literal["fully_local", "hybrid_api"]
 CorpusSize = Literal["small", "medium", "large"]  # <10k, 10k-1M, >1M
 UserScale = Literal["solo", "team", "production"]
+LLMRuntime = Literal["ollama", "vllm", "llamacpp", "gemini", "anthropic", "openai"]
+VectorDB = Literal["qdrant", "milvus", "chroma", "lancedb", "pgvector"]
+DocParser = Literal["docling", "markitdown", "unstructured", "llamaparse"]
+ChunkStrategy = Literal["recursive", "semantic", "late"]
 
 
 @dataclass(frozen=True)
@@ -31,19 +35,19 @@ class Answers:
 class Recipe:
     template: str
     llm_model: str
-    llm_runtime: Literal["ollama", "vllm", "llamacpp"]
+    llm_runtime: LLMRuntime
     embedding_model: str
     reranker: str | None
-    vector_db: Literal["qdrant", "milvus", "chroma", "lancedb", "pgvector"]
-    doc_parser: Literal["docling", "markitdown", "unstructured", "llamaparse"]
-    chunk_strategy: Literal["recursive", "semantic", "late"]
+    vector_db: VectorDB
+    doc_parser: DocParser
+    chunk_strategy: ChunkStrategy
     chunk_size: int
     gpu_enabled: bool
     vram_cap_gb: int
     notes: list[str] = field(default_factory=list)
-    extras: dict = field(default_factory=dict)
+    extras: dict[str, Any] = field(default_factory=dict)
 
-    def as_template_vars(self, hw: HardwareProfile, answers: Answers) -> dict:
+    def as_template_vars(self, hw: HardwareProfile, answers: Answers) -> dict[str, Any]:
         """Flatten to vars Copier/Jinja can consume."""
         return {
             "recipe": {
@@ -74,7 +78,7 @@ class Recipe:
 
 # --- Model tables by hardware tier ---
 
-_LLM_BY_TIER = {
+_LLM_BY_TIER: dict[str, tuple[str, LLMRuntime]] = {
     "cpu":        ("qwen2.5:3b-instruct-q4_K_M",  "llamacpp"),
     "apple-low":  ("qwen2.5:7b-instruct-q4_K_M",  "ollama"),
     "apple-high": ("qwen2.5:14b-instruct-q4_K_M", "ollama"),
@@ -92,13 +96,21 @@ _EMBED_BY_TIER = {
     "gpu-24gb":   "BAAI/bge-m3",
 }
 
-_VECTORDB_BY_CORPUS = {
+_VECTORDB_BY_CORPUS: dict[str, VectorDB] = {
     "small":  "chroma",
     "medium": "qdrant",
     "large":  "milvus",
 }
 
-_PARSER_BY_MODALITY = [
+# Tiers too weak to run a useful local LLM at interactive speed. When the user
+# allows cloud (privacy=hybrid_api), recommend() upgrades these to a cloud LLM.
+_WEAK_TIERS = {"cpu", "apple-low"}
+
+# Default cloud LLM when hardware is weak and privacy allows it. Cheap + fast;
+# the user can swap the model/runtime in perfectrag.yml. Needs an API key.
+_CLOUD_LLM: tuple[str, LLMRuntime] = ("gemini-2.0-flash", "gemini")
+
+_PARSER_BY_MODALITY: list[tuple[set[str], DocParser]] = [
     ({"images", "tables"}, "docling"),
     ({"tables"},           "docling"),
     ({"images"},           "docling"),
@@ -106,12 +118,21 @@ _PARSER_BY_MODALITY = [
 ]
 
 
-def _pick_parser(modality: list[str]) -> str:
+def _pick_parser(modality: list[str]) -> DocParser:
     mod = set(modality)
     for needed, parser in _PARSER_BY_MODALITY:
         if needed and needed.issubset(mod):
             return parser
     return "markitdown"
+
+
+def _pick_chunking(answers: Answers) -> tuple[ChunkStrategy, int]:
+    """Pick (strategy, size). Recursive ~512 is the cost/quality default — 2025-26
+    benchmarks show semantic chunking rarely beats it. Code corpora use larger
+    chunks so functions/classes stay intact (cAST-style)."""
+    if "code" in answers.modality:
+        return "recursive", 768
+    return "recursive", 512
 
 
 def _pick_template(answers: Answers, tier: str) -> tuple[str, list[str]]:
@@ -151,6 +172,14 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
     parser = _pick_parser(answers.modality)
     template, notes = _pick_template(answers, tier)
 
+    # Privacy allows cloud + hardware too weak for a good local LLM → use cloud.
+    if answers.privacy == "hybrid_api" and tier in _WEAK_TIERS:
+        llm_model, llm_runtime = _CLOUD_LLM
+        notes.append(
+            f"Hardware tier '{tier}' yếu cho LLM local; privacy=hybrid_api nên dùng "
+            f"cloud LLM ({llm_model}). Cần API key — đổi model/runtime trong perfectrag.yml nếu muốn."
+        )
+
     # Production scale → prefer vLLM if GPU has room
     if answers.user_scale == "production" and tier in ("gpu-12gb", "gpu-24gb"):
         llm_runtime = "vllm"
@@ -162,10 +191,12 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
     else:
         reranker = "jinaai/jina-reranker-v2-base-multilingual"
 
+    chunk_strategy, chunk_size = _pick_chunking(answers)
+
     gpu_enabled = hw.gpu_vendor in ("nvidia", "amd", "apple")
     vram_cap = hw.vram_gb if hw.gpu_vendor == "nvidia" else max(hw.ram_gb // 2, 4)
 
-    extras: dict = {
+    extras: dict[str, Any] = {
         "enable_graphrag": answers.use_case == "graphrag" or answers.multi_hop,
         "enable_hybrid_search": answers.use_case in ("qa_docs", "code_rag"),
     }
@@ -178,8 +209,8 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
         reranker=reranker,
         vector_db=vector_db,
         doc_parser=parser,
-        chunk_strategy="recursive",
-        chunk_size=512,
+        chunk_strategy=chunk_strategy,
+        chunk_size=chunk_size,
         gpu_enabled=gpu_enabled,
         vram_cap_gb=vram_cap,
         notes=notes,
