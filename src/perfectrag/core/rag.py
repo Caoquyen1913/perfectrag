@@ -66,6 +66,15 @@ def _chunk_text(text: str, size: int = 512) -> list[str]:
     return [" ".join(words[i : i + size]) for i in range(0, len(words), size) if words[i : i + size]]
 
 
+def _parent_child_chunks(text: str, parent_size: int, child_size: int) -> list[tuple[str, str]]:
+    """Split into parent blocks, each into child chunks. Returns (child, parent) pairs."""
+    pairs: list[tuple[str, str]] = []
+    for parent in _chunk_text(text, parent_size):
+        for child in _chunk_text(parent, child_size):
+            pairs.append((child, parent))
+    return pairs
+
+
 class RAG:
     def __init__(
         self,
@@ -79,6 +88,7 @@ class RAG:
         top_k: int = 5,
         contextual: bool = False,
         query_expansion: int = 0,
+        parent_chunk_size: int = 0,
     ):
         self.store = store
         self.embedder = embedder
@@ -96,6 +106,9 @@ class RAG:
         # each, and fuse with Reciprocal Rank Fusion. Helps recall on terse or
         # multi-hop questions. 0 disables (single-query path).
         self.query_expansion = query_expansion
+        # Parent-document retrieval: embed small child chunks (precise matching)
+        # but feed the larger parent block to the LLM (more context). 0 disables.
+        self.parent_chunk_size = parent_chunk_size
 
     @classmethod
     def from_config(cls, path: str | Path) -> RAG:
@@ -132,6 +145,7 @@ class RAG:
             top_k=int(cfg.get("top_k", 5)),
             contextual=bool(cfg.get("contextual", False)),
             query_expansion=int(cfg.get("query_expansion", 0)),
+            parent_chunk_size=int(cfg.get("parent_chunk_size", 0)),
         )
 
     # --- ingestion ---
@@ -156,13 +170,18 @@ class RAG:
 
     def _index(self, text: str, *, source: str) -> int:
         """Chunk → (optionally) contextualize → embed → upsert. Returns chunk count."""
-        chunks_text = _chunk_text(text, self.chunk_size)
-        if not chunks_text:
+        if self.parent_chunk_size and self.parent_chunk_size > self.chunk_size:
+            pairs = _parent_child_chunks(text, self.parent_chunk_size, self.chunk_size)
+        else:
+            pairs = [(t, "") for t in _chunk_text(text, self.chunk_size)]
+        if not pairs:
             return 0
-        chunks = [
-            Chunk(id=str(uuid.uuid4()), text=t, source=source, metadata={"chunk_index": i})
-            for i, t in enumerate(chunks_text)
-        ]
+        chunks = []
+        for i, (child, parent) in enumerate(pairs):
+            meta: dict[str, object] = {"chunk_index": i}
+            if parent:
+                meta["parent_text"] = parent
+            chunks.append(Chunk(id=str(uuid.uuid4()), text=child, source=source, metadata=meta))
         embed_inputs = [
             self._contextualize(text, c.text) if self.contextual else c.text
             for c in chunks
@@ -238,9 +257,25 @@ class RAG:
         lines = [ln.strip("-*0123456789. ").strip() for ln in out.splitlines() if ln.strip()]
         return lines[:n]
 
+    @staticmethod
+    def _build_context(hits: list[Hit]) -> str:
+        """Join hit texts, expanding each to its parent block (parent-document
+        retrieval) and de-duplicating so a shared parent isn't repeated."""
+        seen: set[str] = set()
+        parts: list[str] = []
+        for h in hits:
+            parent = h.chunk.metadata.get("parent_text")
+            text = parent or h.chunk.text
+            key = parent or h.chunk.id
+            if key in seen:
+                continue
+            seen.add(key)
+            parts.append(text)
+        return "\n---\n".join(parts)
+
     def query(self, question: str, k: int | None = None) -> QueryResult:
         hits = self.retrieve(question, k)
-        context = "\n---\n".join(h.chunk.text for h in hits)
+        context = self._build_context(hits)
         prompt = (
             f"Use the context to answer. If the context doesn't contain the answer, say so.\n\n"
             f"Context:\n{context}\n\nQuestion: {question}\nAnswer:"
@@ -255,7 +290,7 @@ class RAG:
         """
         hits = self.retrieve(question, k)
         yield ("retrieval", hits)
-        context = "\n---\n".join(h.chunk.text for h in hits)
+        context = self._build_context(hits)
         prompt = (
             f"Use the context to answer.\n\nContext:\n{context}\n\nQuestion: {question}\nAnswer:"
         )

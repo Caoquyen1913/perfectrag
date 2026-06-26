@@ -96,7 +96,7 @@ wizard, lộ qua `as_template_vars` + webserver `RecommendReq`. Wiring trong `re
 
 - [x] **RRF (Reciprocal Rank Fusion)** — `core/fusion.py` (`reciprocal_rank_fusion`), dùng để fuse multi-query. 6 test.
 - [x] **Query rewriting / decomposition** — `RAG(query_expansion=N)`: LLM sinh N phrasing → retrieve mỗi cái → RRF fuse. `from_dict` đọc `query_expansion:`. Tắt (=0) giữ nguyên path single-query.
-- [ ] **Parent-document / hierarchical retrieval** — default, pairs với contextual retrieval.
+- [x] **Parent-document / hierarchical retrieval** — `RAG(parent_chunk_size=N)`: embed child chunks nhỏ, query đưa parent block (dedup) cho LLM. `from_dict` đọc `parent_chunk_size:`. 2 test.
 - [ ] **CRAG (Corrective RAG)** agentic loop — opt-in (thắng Self-RAG vì model-agnostic).
 - [ ] **Modernize reranker**: chọn theo leaderboard (Cohere v4 / Voyage 2.5 / Zerank-2 / bge-reranker-v2-m3 / Jina v3) thay vì 3 tên cứng.
 - [ ] **CAG (Cache-Augmented Generation)** flag cho corpus nhỏ/ổn định; router CAG hot-path + RAG cold-path.

@@ -120,6 +120,32 @@ def test_contextual_off_by_default_embeds_raw_chunk():
     assert captured["texts"] == ["alpha beta gamma delta"]
 
 
+def test_parent_document_retrieval_returns_parent_context():
+    """Child chunks are embedded/stored, but query context expands to the parent."""
+    rag = RAG(
+        store=FakeStore(), embedder=FakeEmbedder(), llm=FakeLLM(),
+        parser=FakeParser(), chunk_size=2, parent_chunk_size=6, top_k=5,
+    )
+    # 6 words → 1 parent of 6 words → 3 child chunks of 2 words, all sharing parent
+    n = rag.ingest_text("one two three four five six", source="x")
+    assert n == 3
+    hits = rag.retrieve("anything", k=5)
+    assert all("parent_text" in h.chunk.metadata for h in hits)
+    # context dedups the shared parent → appears once, full 6 words
+    ctx = rag._build_context(hits)
+    assert ctx == "one two three four five six"
+
+
+def test_parent_disabled_keeps_plain_chunks():
+    rag = RAG(
+        store=FakeStore(), embedder=FakeEmbedder(), llm=FakeLLM(),
+        parser=FakeParser(), chunk_size=2, top_k=5,
+    )
+    rag.ingest_text("one two three four", source="x")
+    hits = rag.retrieve("q", k=5)
+    assert all("parent_text" not in h.chunk.metadata for h in hits)
+
+
 def test_from_dict_builds_components(tmp_path, monkeypatch):
     """Verify the factory chain. Heavy backends mocked via lazy import failure paths."""
     # Use Chroma in-memory as the one backend we can test without external deps
