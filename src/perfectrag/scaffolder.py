@@ -30,6 +30,7 @@ _BUILTIN_DESCRIPTIONS = {
     "dify-stack":       "Dify — visual workflow/agent builder với marketplace",
     "code-graph-rag":   "Code intelligence — Serena LSP + ast-grep MCP (+ Memgraph graph), cho Claude Code",
     "r2r-stack":        "R2R — production all-in-one: hybrid+RRF, GraphRAG, multimodal, agentic (Postgres/pgvector)",
+    "onyx-stack":       "Onyx (ex-Danswer) — enterprise connector search (Slack/Drive/GitHub/Confluence), permission-aware",
 }
 
 

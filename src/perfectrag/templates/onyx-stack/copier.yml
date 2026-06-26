@@ -1,0 +1,12 @@
+_templates_suffix: .jinja
+_envops:
+  keep_trailing_newline: true
+_answers_file: .copier-answers.yml
+_exclude:
+  - copier.yml
+  - __init__.py
+
+project_name:
+  type: str
+  default: my-onyx
+  help: Project name

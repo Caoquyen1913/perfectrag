@@ -1,0 +1,59 @@
+# Onyx (formerly Danswer) — enterprise connector-based search: 40+ connectors
+# (Slack, Drive, GitHub, Confluence, ...), permission-aware, self-hostable.
+#
+# This is a STARTING POINT that vendors Onyx's data tier (Postgres, Vespa, Redis)
+# and references the official Onyx app images. For the authoritative, complete
+# deployment (background workers, model servers, nginx, env), use Onyx's upstream
+# compose: https://github.com/onyx-dot-app/onyx/tree/main/deployment/docker_compose
+services:
+  relational_db:
+    image: postgres:15.2-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=onyx
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 10
+
+  index:
+    image: vespaengine/vespa:8
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./volumes/vespa:/opt/vespa/var
+
+  cache:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+
+  api_server:
+    image: onyxdotapp/onyx-backend:latest
+    restart: unless-stopped
+    depends_on:
+      - relational_db
+      - index
+      - cache
+    env_file: .env
+    ports:
+      - "8080:8080"
+    environment:
+      - POSTGRES_HOST=relational_db
+      - VESPA_HOST=index
+      - REDIS_HOST=cache
+
+  web_server:
+    image: onyxdotapp/onyx-web-server:latest
+    restart: unless-stopped
+    depends_on:
+      - api_server
+    ports:
+      - "3000:3000"   # http://localhost:3000
+    environment:
+      - INTERNAL_URL=http://api_server:8080
