@@ -483,8 +483,20 @@ def eval(
         help="JSONL dataset relative to project dir",
     ),
     tier: str = typer.Option("ragas", "--tier", help="ragas|deepeval"),
+    retrieval: bool = typer.Option(
+        False, "--retrieval",
+        help="Offline retrieval metrics (recall@k/MRR/nDCG) via the embedded library — no Docker",
+    ),
+    k: int = typer.Option(5, "--k", help="top-k for retrieval metrics"),
+    gate: bool = typer.Option(
+        False, "--gate", help="Exit non-zero if recall@k<0.8 or MRR<0.7 (CI quality gate)",
+    ),
 ) -> None:
-    """Run RAG quality eval via the `eval` addon (must be installed)."""
+    """Run RAG quality eval. Generation metrics via the `eval` addon (RAGAS/DeepEval),
+    or offline retrieval metrics with --retrieval."""
+    if retrieval:
+        _eval_retrieval(project_dir, dataset, k, gate)
+        return
     if "eval" not in list_installed(project_dir):
         console.print("[red]Eval addon not installed. Run `perfectrag add addon eval -p .`[/red]")
         raise typer.Exit(1)
@@ -590,6 +602,43 @@ def _show_recipe(recipe: recipes.Recipe) -> None:
     console.print(table)
     for note in recipe.notes:
         console.print(f"[yellow]![/yellow] {note}")
+
+
+def _eval_retrieval(project_dir: Path, dataset: Path, k: int, gate: bool) -> None:
+    """Offline retrieval-quality eval against a golden JSONL set, no Docker."""
+    import json
+
+    from perfectrag.core.evaluation import evaluate_retrieval, passes_gate
+    from perfectrag.core.rag import RAG
+
+    cfg = project_dir / "perfectrag.yml"
+    if not cfg.exists():
+        console.print(f"[red]No perfectrag.yml at {project_dir} — this needs the embedded library.[/red]")
+        raise typer.Exit(1)
+    ds_path = project_dir / dataset
+    if not ds_path.exists():
+        console.print(f"[red]Dataset not found: {ds_path}[/red]")
+        console.print('[dim]JSONL lines: {"question": "...", "relevant": ["source1", ...]}[/dim]')
+        raise typer.Exit(1)
+
+    data = [json.loads(line) for line in ds_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rag = RAG.from_config(cfg)
+    metrics = evaluate_retrieval(rag, data, k=k)
+
+    table = Table(title=f"Retrieval metrics (k={k}, n={metrics.n})")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value")
+    for name, val in metrics.as_dict().items():
+        table.add_row(name, str(val))
+    console.print(table)
+
+    if gate:
+        ok, failures = passes_gate(metrics, {"recall_at_k": 0.8, "mrr": 0.7})
+        if ok:
+            console.print("[green]Quality gate PASSED.[/green]")
+        else:
+            console.print(f"[red]Quality gate FAILED: {', '.join(failures)}[/red]")
+            raise typer.Exit(1)
 
 
 def _show_ranking(answers: recipes.Answers, hw: hardware.HardwareProfile) -> None:

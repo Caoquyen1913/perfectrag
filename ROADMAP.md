@@ -57,7 +57,8 @@
 
 ### B.2 Eval harness + CI quality gate (đóng "trust gap")
 - [x] **Tách metric retrieval** khỏi generation: module `core/evaluation.py` (recall@k, MRR, nDCG, `evaluate_retrieval`, `passes_gate`) — deterministic, không cần LLM/Docker. 7 test.
-- [ ] Bake `eval/` + golden set + `passes_gate` thresholds vào **mọi** project (CLI `perfectrag eval --retrieval` + fail build) — follow-up wiring.
+- [x] CLI `perfectrag eval --retrieval [--gate --k N]` — chạy retrieval metrics offline (embedded library) trên golden JSONL, fail build nếu recall@k<0.8/MRR<0.7. 3 test (CliRunner).
+- [ ] (Follow-up) bake golden-set template + eval step vào scaffold của mọi template.
 - [ ] Generation metrics (faithfulness/answer-relevancy) vẫn dùng addon RAGAS/DeepEval đã có.
 - [ ] Citation / groundedness gate trước khi trả lời.
 
