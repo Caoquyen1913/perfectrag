@@ -431,6 +431,7 @@ def advise(
             t.add_row(f, str(diff.get("from")), str(diff.get("to")))
         console.print(t)
     _show_recipe(advice.recipe)
+    _show_ranking(base_answers, hw)
 
 
 @app.command()
@@ -589,6 +590,19 @@ def _show_recipe(recipe: recipes.Recipe) -> None:
     console.print(table)
     for note in recipe.notes:
         console.print(f"[yellow]![/yellow] {note}")
+
+
+def _show_ranking(answers: recipes.Answers, hw: hardware.HardwareProfile) -> None:
+    ranked = recipes.score_candidates(answers, hw)
+    table = Table(title="Đánh giá template (xếp hạng theo fit)")
+    table.add_column("#", style="dim")
+    table.add_column("Template", style="cyan")
+    table.add_column("Score")
+    table.add_column("Vì sao")
+    for i, c in enumerate(ranked, 1):
+        name = f"[bold green]{c.template}[/bold green] ✓" if c.recommended else c.template
+        table.add_row(str(i), name, str(c.score), "; ".join(c.reasons))
+    console.print(table)
 
 
 def _list_templates() -> None:

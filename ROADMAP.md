@@ -75,9 +75,9 @@
 - [ ] **Ngân sách API/tháng** (nếu hybrid) → cap model size, fallback local.
 
 ### C.2 Biến `recommend()` thành scored evaluator
-- [ ] Chấm điểm từng template theo trục (fit use-case, latency, cost, privacy, scale).
-- [ ] Trả **top-3 ranking + lý do + trade-off**, highlight #1 (thay vì 1 pick cứng).
-- [ ] Mở rộng `advisor.py` (đang chỉ gọi Gemini refine) để render bảng so sánh có điểm.
+- [x] `score_candidates(answers, hw)` chấm điểm từng template (use-case, scale, corpus, modality) + lý do; #1 luôn khớp routing chính.
+- [x] Trả **top-3 ranking + lý do**, highlight #1. CLI `advise` render bảng "Đánh giá template". 4 test mới.
+- [ ] (Follow-up) thêm trục latency/cost/privacy khi đã có câu hỏi C.1.
 
 ---
 

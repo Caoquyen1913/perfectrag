@@ -223,3 +223,77 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
         notes=notes,
         extras=extras,
     )
+
+
+# --- Scored ranking (advisor): show WHY the pick won + the runner-ups ---
+
+@dataclass
+class ScoredCandidate:
+    template: str
+    score: int
+    reasons: list[str]
+    recommended: bool = False
+
+
+# What each template is built for. Used to score fit and explain trade-offs.
+_TEMPLATE_FIT: dict[str, dict[str, Any]] = {
+    "custom-naive-rag": {
+        "use_cases": {"qa_docs"}, "scales": {"solo", "team"}, "corpora": {"small"},
+        "note": "đơn giản nhất, CPU-friendly, fully-local",
+    },
+    "ragflow-stack": {
+        "use_cases": {"qa_docs", "multimodal", "code_rag"},
+        "scales": {"team", "production"}, "corpora": {"small", "medium", "large"},
+        "note": "production: hybrid search + deep doc parsing",
+    },
+    "lightrag-stack": {
+        "use_cases": {"graphrag"}, "scales": {"solo", "team", "production"},
+        "corpora": {"small", "medium"}, "note": "graph / multi-hop reasoning",
+    },
+    "dify-stack": {
+        "use_cases": {"agent_workflow"}, "scales": {"team", "production"},
+        "corpora": {"small", "medium"}, "note": "visual agent/workflow builder",
+    },
+    "code-graph-rag": {
+        "use_cases": {"code_rag"}, "scales": {"solo", "team", "production"},
+        "corpora": {"small", "medium", "large"}, "note": "LSP symbol nav cho Claude Code",
+    },
+}
+
+
+def score_candidates(answers: Answers, hw: HardwareProfile, top_n: int = 3) -> list[ScoredCandidate]:
+    """Rank templates by fit and explain why — for an evaluative recommendation.
+
+    The #1 always matches `recommend()`'s authoritative routing; the rest are
+    scored runner-ups with reasons so users see the trade-offs."""
+    authoritative, _ = _pick_template(answers, hw.tier)
+    mod = set(answers.modality)
+    out: list[ScoredCandidate] = []
+    for tmpl, fit in _TEMPLATE_FIT.items():
+        score = 0
+        reasons: list[str] = []
+        if answers.use_case in fit["use_cases"]:
+            score += 5
+            reasons.append(f"khớp use-case '{answers.use_case}'")
+        if (answers.use_case == "graphrag" or answers.multi_hop) and tmpl == "lightrag-stack":
+            score += 5
+            reasons.append("xử lý graph / multi-hop")
+        if answers.user_scale in fit["scales"]:
+            score += 2
+            reasons.append(f"hợp scale '{answers.user_scale}'")
+        if answers.corpus_size in fit["corpora"]:
+            score += 1
+            reasons.append(f"hợp corpus '{answers.corpus_size}'")
+        if {"images", "tables"} & mod and tmpl == "ragflow-stack":
+            score += 2
+            reasons.append("multimodal parsing (docling)")
+        reasons.append(fit["note"])
+        out.append(ScoredCandidate(template=tmpl, score=score, reasons=reasons))
+
+    # Authoritative routing is decisive → pin it to #1, then sort the rest by fit.
+    out.sort(key=lambda c: (c.template == authoritative, c.score), reverse=True)
+    if out:
+        out[0].recommended = True
+        if out[0].template == authoritative:
+            out[0].reasons.insert(0, "khớp routing rule (lựa chọn chính)")
+    return out[:top_n]

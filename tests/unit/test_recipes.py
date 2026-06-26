@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from perfectrag.hardware import HardwareProfile
-from perfectrag.recipes import Answers, recommend
+from perfectrag.recipes import Answers, recommend, score_candidates
 
 
 def _hw(tier: str) -> HardwareProfile:
@@ -158,6 +158,33 @@ def test_code_modality_uses_larger_chunks():
     r = recommend(_answers(use_case="code_rag", modality=["code"]), _hw("gpu-8gb"))
     assert r.chunk_strategy == "recursive"
     assert r.chunk_size == 768
+
+
+def test_score_candidates_top_matches_recommend():
+    answers = _answers()
+    hw = _hw("gpu-8gb")
+    ranked = score_candidates(answers, hw)
+    assert ranked[0].recommended is True
+    assert ranked[0].template == recommend(answers, hw).template
+    assert len(ranked) == 3
+    assert all(c.reasons for c in ranked)  # every candidate explains itself
+
+
+def test_score_candidates_graphrag_ranks_lightrag_first():
+    ranked = score_candidates(_answers(use_case="graphrag"), _hw("gpu-12gb"))
+    assert ranked[0].template == "lightrag-stack"
+    assert ranked[0].recommended is True
+
+
+def test_score_candidates_code_rag_ranks_code_graph_first():
+    ranked = score_candidates(_answers(use_case="code_rag", modality=["code"]), _hw("gpu-8gb"))
+    assert ranked[0].template == "code-graph-rag"
+
+
+def test_score_candidates_orders_by_score_after_pick():
+    ranked = score_candidates(_answers(), _hw("gpu-8gb"), top_n=5)
+    scores = [c.score for c in ranked[1:]]  # runner-ups
+    assert scores == sorted(scores, reverse=True)
 
 
 def test_recipe_template_vars_shape():

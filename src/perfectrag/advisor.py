@@ -53,7 +53,7 @@ BASE RECIPE (from rule engine):
 - extras: {base.extras}
 
 AVAILABLE OPTIONS:
-- template: custom-naive-rag, ragflow-stack, lightrag-stack, dify-stack
+- template: custom-naive-rag, ragflow-stack, lightrag-stack, dify-stack, code-graph-rag
 - vector_db: qdrant, milvus, chroma, lancedb, pgvector
 - embedding_model: BAAI/bge-m3, nomic-embed-text, jinaai/jina-embeddings-v3, intfloat/e5-large-v2, Qwen/Qwen3-Embedding-0.6B
 - reranker: BAAI/bge-reranker-v2-m3, jinaai/jina-reranker-v2-base-multilingual, mixedbread-ai/mxbai-rerank-large-v1, colbert-ir/colbertv2.0, null
