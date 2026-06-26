@@ -80,3 +80,39 @@ def test_query_expansion_zero_uses_single_query():
     rag = RAG(store=store, embedder=_Embedder(), llm=_LLM(), top_k=2, query_expansion=0)
     hits = rag.retrieve("orig", k=2)
     assert [h.chunk.source for h in hits] == ["d1", "d2"]
+
+
+class _GraderLLM:
+    """Returns NO for relevance grading; alternate queries otherwise."""
+
+    def generate(self, prompt, **kw):
+        if "Answer only YES or NO" in prompt:
+            return "NO"
+        return "alt query one\nalt query two"
+
+    def stream(self, prompt, **kw):  # pragma: no cover
+        yield ""
+
+
+def test_corrective_reretrieves_when_irrelevant():
+    # Single-query 'orig' returns only d1; expansion surfaces the shared d2.
+    store = _Store({
+        "orig":          ["d1"],
+        "alt query one": ["d2", "d1"],
+        "alt query two": ["d2"],
+    })
+    rag = RAG(store=store, embedder=_Embedder(), llm=_GraderLLM(), top_k=3, corrective=True)
+    hits = rag.retrieve("orig", k=3)
+    sources = [h.chunk.source for h in hits]
+    assert "d2" in sources          # correction pulled in results the first pass missed
+    assert sources[0] == "d2"       # d2 ranked top across expanded queries
+
+
+def test_corrective_keeps_results_when_relevant():
+    class _RelevantLLM(_GraderLLM):
+        def generate(self, prompt, **kw):
+            return "YES" if "Answer only YES or NO" in prompt else "x"
+
+    store = _Store({"orig": ["d1", "d2"]})
+    rag = RAG(store=store, embedder=_Embedder(), llm=_RelevantLLM(), top_k=3, corrective=True)
+    assert [h.chunk.source for h in rag.retrieve("orig", k=3)] == ["d1", "d2"]

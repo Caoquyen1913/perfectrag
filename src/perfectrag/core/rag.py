@@ -89,6 +89,7 @@ class RAG:
         contextual: bool = False,
         query_expansion: int = 0,
         parent_chunk_size: int = 0,
+        corrective: bool = False,
     ):
         self.store = store
         self.embedder = embedder
@@ -109,6 +110,9 @@ class RAG:
         # Parent-document retrieval: embed small child chunks (precise matching)
         # but feed the larger parent block to the LLM (more context). 0 disables.
         self.parent_chunk_size = parent_chunk_size
+        # Corrective RAG (CRAG): grade the initial results; if they look irrelevant,
+        # re-retrieve once with query expansion before answering.
+        self.corrective = corrective
 
     @classmethod
     def from_config(cls, path: str | Path) -> RAG:
@@ -146,6 +150,7 @@ class RAG:
             contextual=bool(cfg.get("contextual", False)),
             query_expansion=int(cfg.get("query_expansion", 0)),
             parent_chunk_size=int(cfg.get("parent_chunk_size", 0)),
+            corrective=bool(cfg.get("corrective", False)),
         )
 
     # --- ingestion ---
@@ -219,17 +224,22 @@ class RAG:
         else:
             qvec = self.embedder.embed(question)
             hits = self.store.search(self.collection, qvec, retrieval_k)
+        # CRAG: if the first pass looks irrelevant, retry once with expansion.
+        if (self.corrective and self.llm is not None and hits
+                and not self.query_expansion and not self._grade_relevance(question, hits)):
+            hits = self._multi_query_search(question, retrieval_k, n=3)
         if self.reranker and hits:
             docs = [h.chunk.text for h in hits]
             ranked = self.reranker.rerank(question, docs, top_k=k)
             return [Hit(chunk=hits[i].chunk, score=s) for i, s in ranked]
         return hits[:k]
 
-    def _multi_query_search(self, question: str, retrieval_k: int) -> list[Hit]:
+    def _multi_query_search(self, question: str, retrieval_k: int, n: int | None = None) -> list[Hit]:
         """Retrieve for the original + expanded queries, fuse with RRF."""
         from perfectrag.core.fusion import reciprocal_rank_fusion
 
-        queries = [question, *self._expand_query(question, self.query_expansion)]
+        n = self.query_expansion if n is None else n
+        queries = [question, *self._expand_query(question, n)]
         by_id: dict[str, Hit] = {}
         rankings: list[list[str]] = []
         for q in queries:
@@ -256,6 +266,23 @@ class RAG:
             return []
         lines = [ln.strip("-*0123456789. ").strip() for ln in out.splitlines() if ln.strip()]
         return lines[:n]
+
+    def _grade_relevance(self, question: str, hits: list[Hit]) -> bool:
+        """LLM judges whether the retrieved context can answer the question.
+        Returns True (assume relevant) on any failure — never blocks answering."""
+        if self.llm is None or not hits:
+            return True
+        sample = "\n".join(h.chunk.text[:200] for h in hits[:3])
+        prompt = (
+            f"Question: {question}\nRetrieved context:\n{sample}\n\n"
+            "Is this context relevant and sufficient to answer the question? "
+            "Answer only YES or NO."
+        )
+        try:
+            out = self.llm.generate(prompt, max_tokens=5).strip().upper()
+        except Exception:
+            return True
+        return not out.startswith("NO")
 
     @staticmethod
     def _build_context(hits: list[Hit]) -> str:
