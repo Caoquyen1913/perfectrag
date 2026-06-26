@@ -29,6 +29,7 @@ _BUILTIN_DESCRIPTIONS = {
     "lightrag-stack":   "LightRAG — GraphRAG với dual-level retrieval + WebUI",
     "dify-stack":       "Dify — visual workflow/agent builder với marketplace",
     "code-graph-rag":   "Code intelligence — Serena LSP + ast-grep MCP (+ Memgraph graph), cho Claude Code",
+    "r2r-stack":        "R2R — production all-in-one: hybrid+RRF, GraphRAG, multimodal, agentic (Postgres/pgvector)",
 }
 
 

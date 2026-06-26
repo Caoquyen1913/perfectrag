@@ -1,0 +1,60 @@
+# R2R (SciPhi) — production all-in-one RAG: hybrid search + RRF, GraphRAG,
+# multimodal, and agentic "Deep Research" out of the box. Store = Postgres+pgvector.
+#
+# Pin images for reproducibility; `latest` is used here for first-run simplicity.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=r2r
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./volumes/ollama:/root/.ollama
+{%- if recipe.gpu_enabled and hw.gpu_vendor == 'nvidia' %}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+{%- endif %}
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on: [ollama]
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "sleep 10 && \
+       OLLAMA_HOST=ollama:11434 ollama pull nomic-embed-text{% if recipe.llm_runtime not in ['gemini', 'anthropic', 'openai'] %} && \
+       OLLAMA_HOST=ollama:11434 ollama pull {{ recipe.llm_model }}{% endif %}"
+    restart: "no"
+
+  r2r:
+    image: sciphiai/r2r:latest
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - ollama
+    env_file: .env
+    ports:
+      - "7272:7272"   # R2R REST API + dashboard
+    environment:
+      - R2R_POSTGRES_HOST=postgres
+      - R2R_POSTGRES_PORT=5432
+      - R2R_POSTGRES_DBNAME=r2r
+      - OLLAMA_API_BASE=http://ollama:11434

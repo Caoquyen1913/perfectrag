@@ -85,7 +85,7 @@ wizard, lộ qua `as_template_vars` + webserver `RecommendReq`. Wiring trong `re
 
 ## TRACK D — Backbone / template mới (lấp use-case 4 template chưa có)
 
-- [ ] **R2R (SciPhi, MIT)** — all-in-one production: hybrid+RRF+GraphRAG+multimodal+**agentic RAG** sẵn. Lấp gap "agentic". ⭐
+- [x] **R2R (SciPhi, MIT)** — template `r2r-stack` (Postgres/pgvector + Ollama + R2R, available qua `--template`). Compose VALID local + hybrid. ⭐
 - [ ] **Onyx (ex-Danswer, MIT)** — **enterprise connectors** (40+: Slack/Drive/GitHub/Confluence), permission-aware, air-gapped Helm/K8s. Use-case "chat trên data công ty". ⭐
 - [ ] **Cognee** (tuỳ chọn) — graph+vector "AI memory" + ontology, persistent agent memory.
 - [ ] Mỗi template: dir + `copier.yml` + đăng ký `scaffolder._DESCRIPTIONS` + route `recipes._pick_template` + docs.
