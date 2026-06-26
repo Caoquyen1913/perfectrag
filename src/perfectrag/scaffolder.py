@@ -28,6 +28,7 @@ _BUILTIN_DESCRIPTIONS = {
     "ragflow-stack":    "RAGFlow — hybrid search, deep doc parsing, agentic, MCP-ready",
     "lightrag-stack":   "LightRAG — GraphRAG với dual-level retrieval + WebUI",
     "dify-stack":       "Dify — visual workflow/agent builder với marketplace",
+    "code-graph-rag":   "Code intelligence — Serena LSP + ast-grep MCP (+ Memgraph graph), cho Claude Code",
 }
 
 

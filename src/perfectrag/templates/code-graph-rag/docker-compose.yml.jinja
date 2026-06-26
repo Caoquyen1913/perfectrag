@@ -1,0 +1,32 @@
+# Optional persistent code-graph store (Memgraph + Lab UI).
+#
+# The CORE code intelligence (Serena LSP via mcp.yaml) needs NO Docker — bring
+# this up only when you want a queryable AST/symbol graph you can index with a
+# tool like code-graph-rag (https://github.com/vitali87/code-graph-rag) and
+# explore visually in Memgraph Lab.
+#
+# Pin images for reproducibility; `latest` is used here for first-run simplicity.
+services:
+  memgraph:
+    image: memgraph/memgraph-mage:latest
+    restart: unless-stopped
+    ports:
+      - "7687:7687"   # Bolt protocol
+    command: ["--telemetry-enabled=false", "--log-level=WARNING"]
+    volumes:
+      - ./volumes/memgraph:/var/lib/memgraph
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/7687"]
+      interval: 10s
+      retries: 10
+
+  memgraph-lab:
+    image: memgraph/lab:latest
+    restart: unless-stopped
+    depends_on:
+      - memgraph
+    ports:
+      - "3000:3000"   # http://localhost:3000
+    environment:
+      - QUICK_CONNECT_MG_HOST=memgraph
+      - QUICK_CONNECT_MG_PORT=7687

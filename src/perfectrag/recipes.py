@@ -156,7 +156,7 @@ def _pick_template(answers: Answers, tier: str) -> tuple[str, list[str]]:
         return "ragflow-stack", notes
 
     if answers.use_case == "code_rag":
-        return "ragflow-stack", notes
+        return "code-graph-rag", notes
 
     # qa_docs default
     if tier == "cpu":

@@ -149,6 +149,11 @@ def test_chunking_default_is_recursive_512():
     assert r.chunk_size == 512
 
 
+def test_code_rag_picks_code_graph_template():
+    r = recommend(_answers(use_case="code_rag", modality=["code"]), _hw("gpu-8gb"))
+    assert r.template == "code-graph-rag"
+
+
 def test_code_modality_uses_larger_chunks():
     r = recommend(_answers(use_case="code_rag", modality=["code"]), _hw("gpu-8gb"))
     assert r.chunk_strategy == "recursive"

@@ -1,0 +1,22 @@
+# Code-intelligence MCP servers — point Claude Code / Cursor at this file.
+#
+# Serena gives LSP symbol navigation (find_symbol, find_referencing_symbols,
+# call hierarchy, symbol-level edits) for 30+ languages with NO infrastructure —
+# it is the primary, always-on code intelligence. ast-grep adds structural search.
+#
+# Add more via `perfectrag add mcp <name>` (e.g. `claude-context` for semantic
+# code search backed by the optional Memgraph/Milvus stack).
+servers:
+  serena:
+    command: uvx
+    args:
+      - "--from"
+      - "git+https://github.com/oraios/serena"
+      - "serena-mcp-server"
+      - "--context"
+      - "ide-assistant"
+      - "--project"
+      - "${REPO_PATH:-.}"
+  ast-grep:
+    command: uvx
+    args: ["ast-grep-mcp"]

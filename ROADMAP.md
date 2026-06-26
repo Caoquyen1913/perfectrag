@@ -37,13 +37,13 @@
 > Bonus kỹ thuật (áp dụng cho option nào có embeddings): **cAST chunking** (arXiv 2506.15655) — AST chunk thắng naive (RepoEval Recall@5 +1.8–4.3). Đừng dùng naive chunk cho code.
 
 ### A.2 — Đề xuất thiết kế template `code-graph-rag`
-- [ ] Wizard `code_rag` hỏi thêm **"mức code-intelligence"**: `repo-map` (rẻ) / `lsp-symbols` (Serena) / `full-graph` (code-graph-rag/Memgraph) / `+embeddings` (Claude Context).
-- [ ] Template mới `templates/code-graph-rag/`: docker-compose (Memgraph hoặc no-DB tuỳ option) + `mcp.yaml` cắm code-intelligence MCP + skill `code-rag`.
-- [ ] **Mặc định = Serena (LSP, no-infra)** + repo-map; **opt-in** = full-graph (Memgraph) hoặc embeddings (Milvus).
-- [ ] Đăng ký template trong `scaffolder._DESCRIPTIONS` + route trong `recipes._pick_template`.
-- [ ] Thêm các MCP server code-intel vào `mcp_registry.py` (serena, code-graph-rag, ast-grep, claude-context).
-- [ ] Skill + docs `docs/code-graph.md`.
-- [ ] Test scaffold + `docker compose config` valid (như các template khác).
+- [ ] Wizard `code_rag` hỏi thêm **"mức code-intelligence"**: `repo-map` (rẻ) / `lsp-symbols` (Serena) / `full-graph` (code-graph-rag/Memgraph) / `+embeddings` (Claude Context). *(để Track C — wizard overhaul)*
+- [x] Template mới `templates/code-graph-rag/`: docker-compose (Memgraph + Lab, opt-in) + `mcp.yaml` (Serena + ast-grep) + skills/.
+- [x] **Mặc định = Serena (LSP, no-infra)**; **opt-in** = full-graph (Memgraph) hoặc embeddings (`add mcp claude-context`).
+- [x] Đăng ký template trong `scaffolder._BUILTIN_DESCRIPTIONS` + route `code_rag` trong `recipes._pick_template`.
+- [x] Thêm MCP code-intel vào `mcp_registry.py` (serena, ast-grep, claude-context). *(code-graph-rag bundled qua Memgraph compose thay vì registry)*
+- [x] Test scaffold + `docker compose config` VALID + routing test.
+- [ ] (Nice-to-have) docs `docs/code-graph.md` + bundled skill `code-graph`.
 
 ---
 
