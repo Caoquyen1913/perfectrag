@@ -43,7 +43,8 @@
 - [x] Đăng ký template trong `scaffolder._BUILTIN_DESCRIPTIONS` + route `code_rag` trong `recipes._pick_template`.
 - [x] Thêm MCP code-intel vào `mcp_registry.py` (serena, ast-grep, claude-context). *(code-graph-rag bundled qua Memgraph compose thay vì registry)*
 - [x] Test scaffold + `docker compose config` VALID + routing test.
-- [ ] (Nice-to-have) docs `docs/code-graph.md` + bundled skill `code-graph`.
+- [x] docs `docs/code-graph.md` (+ `docs/retrieval.md` cho contextual/parent-doc/query-expansion/CRAG/eval).
+- [ ] (Nice-to-have) bundled skill `code-graph`.
 
 ---
 
