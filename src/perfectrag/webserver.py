@@ -94,6 +94,12 @@ class RecommendReq(BaseModel):
     multi_hop: bool = False
     corpus_size: str = "small"
     user_scale: str = "solo"
+    latency: str = "standard"
+    priority: str = "balanced"
+    language: str = "english"
+    freshness: str = "static"
+    existing_infra: list[str] = []
+    needs_citations: bool = False
 
 
 @app.post("/api/recommend")

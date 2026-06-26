@@ -81,6 +81,61 @@ def run_wizard() -> Answers:
         default="solo",
     ).execute()
 
+    latency = inquirer.select(
+        message="Độ trễ chấp nhận cho mỗi truy vấn?",
+        choices=[
+            Choice("interactive", name="Interactive (<1s — chat realtime)"),
+            Choice("standard", name="Standard (vài giây)"),
+            Choice("batch", name="Batch (không gấp)"),
+        ],
+        default="standard",
+    ).execute()
+
+    priority = inquirer.select(
+        message="Ưu tiên cao nhất?",
+        choices=[
+            Choice("balanced", name="Cân bằng"),
+            Choice("accuracy", name="Độ chính xác"),
+            Choice("cost", name="Chi phí thấp"),
+            Choice("speed", name="Tốc độ"),
+        ],
+        default="balanced",
+    ).execute()
+
+    language = inquirer.select(
+        message="Ngôn ngữ corpus?",
+        choices=[
+            Choice("english", name="Tiếng Anh"),
+            Choice("multilingual", name="Đa ngữ"),
+            Choice("vietnamese", name="Tiếng Việt"),
+        ],
+        default="english",
+    ).execute()
+
+    freshness = inquirer.select(
+        message="Tần suất cập nhật dữ liệu?",
+        choices=[
+            Choice("static", name="Tĩnh (ít/không đổi)"),
+            Choice("periodic", name="Định kỳ (crawl/sync theo lịch)"),
+            Choice("streaming", name="Streaming (liên tục)"),
+        ],
+        default="static",
+    ).execute()
+
+    existing_infra = inquirer.checkbox(
+        message="Hạ tầng đã có sẵn? (space để chọn)",
+        choices=[
+            Choice("postgres", name="PostgreSQL (có thể tái dùng làm vector store)"),
+            Choice("elasticsearch", name="Elasticsearch"),
+            Choice("k8s", name="Kubernetes"),
+        ],
+    ).execute()
+
+    needs_citations = inquirer.confirm(
+        message="Cần trích dẫn nguồn / groundedness?",
+        default=False,
+    ).execute()
+
     return Answers(
         use_case=use_case,
         modality=modality or ["text"],
@@ -88,6 +143,12 @@ def run_wizard() -> Answers:
         multi_hop=multi_hop,
         corpus_size=corpus_size,
         user_scale=user_scale,
+        latency=latency,
+        priority=priority,
+        language=language,
+        freshness=freshness,
+        existing_infra=existing_infra or [],
+        needs_citations=needs_citations,
     )
 
 

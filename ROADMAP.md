@@ -65,14 +65,16 @@
 
 ## TRACK C — Scored Advisor wizard ("đánh giá & chọn tốt nhất")
 
-### C.1 Thêm câu hỏi thật sự lái quyết định
-- [ ] **Độ trễ chấp nhận** (interactive <1s / vài giây / batch) → reranker, vLLM vs ollama, CAG vs RAG.
-- [ ] **Ưu tiên: accuracy vs cost vs speed** (chọn 1–2) → cloud vs local, contextual retrieval on/off.
-- [ ] **Ngôn ngữ corpus** (Anh / đa ngữ / VN) → embedding (bge-m3 vs e5), reranker đa ngữ.
-- [ ] **Tần suất cập nhật dữ liệu** (tĩnh / định kỳ / streaming) → ingest-worker addon, CAG (tĩnh) vs RAG (động).
-- [ ] **Hạ tầng sẵn có** (Postgres? Elastic? K8s?) → pgvector tái dùng PG, deploy target.
-- [ ] **Cần trích dẫn / tuân thủ?** → citation gate, backbone permission-aware (Onyx).
-- [ ] **Ngân sách API/tháng** (nếu hybrid) → cap model size, fallback local.
+### C.1 Thêm câu hỏi thật sự lái quyết định — ✅ ĐÃ LÀM
+6 field mới (optional, default an toàn — fixture/answers-file cũ vẫn chạy): `latency`,
+`priority`, `language`, `freshness`, `existing_infra`, `needs_citations`. Hỏi trong
+wizard, lộ qua `as_template_vars` + webserver `RecommendReq`. Wiring trong `recommend()`:
+- [x] **Độ trễ / ưu tiên tốc độ** (`latency=interactive` hoặc `priority=speed`) → bỏ reranker giảm latency.
+- [x] **Ngôn ngữ** (multilingual/vietnamese) → embedding `BAAI/bge-m3` kể cả trên cpu.
+- [x] **Tần suất cập nhật** (periodic/streaming) → `extras.enable_ingest_worker` + note.
+- [x] **Hạ tầng sẵn có** (`postgres`) → `vector_db=pgvector` (trừ naive template bundle qdrant).
+- [x] **Cần trích dẫn** → `extras.enable_citations` + note.
+- [ ] (Follow-up) ngân sách API/tháng; dùng các field này trong `score_candidates` (trục latency/cost).
 
 ### C.2 Biến `recommend()` thành scored evaluator
 - [x] `score_candidates(answers, hw)` chấm điểm từng template (use-case, scale, corpus, modality) + lý do; #1 luôn khớp routing chính.

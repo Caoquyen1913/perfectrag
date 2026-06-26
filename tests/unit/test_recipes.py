@@ -160,6 +160,51 @@ def test_code_modality_uses_larger_chunks():
     assert r.chunk_size == 768
 
 
+def test_multilingual_forces_bge_m3_even_on_cpu():
+    r = recommend(_answers(language="vietnamese"), _hw("cpu"))
+    assert r.embedding_model == "BAAI/bge-m3"
+
+
+def test_existing_postgres_uses_pgvector():
+    r = recommend(_answers(existing_infra=["postgres"]), _hw("gpu-8gb"))
+    assert r.vector_db == "pgvector"
+
+
+def test_existing_postgres_skipped_for_naive_template():
+    # cpu qa_docs → custom-naive-rag, which bundles qdrant; pgvector not applied.
+    r = recommend(_answers(existing_infra=["postgres"]), _hw("cpu"))
+    assert r.template == "custom-naive-rag"
+    assert r.vector_db == "qdrant"
+
+
+def test_speed_priority_drops_reranker():
+    base = recommend(_answers(), _hw("gpu-8gb"))
+    assert base.reranker is not None
+    fast = recommend(_answers(priority="speed"), _hw("gpu-8gb"))
+    assert fast.reranker is None
+
+
+def test_interactive_latency_drops_reranker():
+    r = recommend(_answers(latency="interactive"), _hw("gpu-8gb"))
+    assert r.reranker is None
+
+
+def test_freshness_streaming_enables_ingest_worker():
+    r = recommend(_answers(freshness="streaming"), _hw("gpu-8gb"))
+    assert r.extras["enable_ingest_worker"] is True
+
+
+def test_needs_citations_extra():
+    r = recommend(_answers(needs_citations=True), _hw("gpu-8gb"))
+    assert r.extras["enable_citations"] is True
+
+
+def test_new_answer_fields_default_safely():
+    """Old-style Answers (6 fields) still construct and recommend."""
+    r = recommend(_answers(), _hw("gpu-8gb"))
+    assert r.embedding_model and r.template
+
+
 def test_score_candidates_top_matches_recommend():
     answers = _answers()
     hw = _hw("gpu-8gb")

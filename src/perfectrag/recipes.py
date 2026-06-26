@@ -15,6 +15,10 @@ UseCase = Literal["qa_docs", "graphrag", "multimodal", "code_rag", "agent_workfl
 Privacy = Literal["fully_local", "hybrid_api"]
 CorpusSize = Literal["small", "medium", "large"]  # <10k, 10k-1M, >1M
 UserScale = Literal["solo", "team", "production"]
+Latency = Literal["interactive", "standard", "batch"]
+Priority = Literal["accuracy", "cost", "speed", "balanced"]
+Language = Literal["english", "multilingual", "vietnamese"]
+Freshness = Literal["static", "periodic", "streaming"]
 LLMRuntime = Literal["ollama", "vllm", "llamacpp", "gemini", "anthropic", "openai"]
 VectorDB = Literal["qdrant", "milvus", "chroma", "lancedb", "pgvector"]
 DocParser = Literal["docling", "markitdown", "unstructured", "llamaparse"]
@@ -29,6 +33,13 @@ class Answers:
     multi_hop: bool
     corpus_size: CorpusSize
     user_scale: UserScale
+    # --- v1.2 evaluative inputs (optional; defaults keep old behavior) ---
+    latency: Latency = "standard"
+    priority: Priority = "balanced"
+    language: Language = "english"
+    freshness: Freshness = "static"
+    existing_infra: list[str] = field(default_factory=list)  # e.g. ["postgres", "k8s"]
+    needs_citations: bool = False
 
 
 @dataclass
@@ -72,6 +83,12 @@ class Recipe:
                 "multi_hop": answers.multi_hop,
                 "corpus_size": answers.corpus_size,
                 "user_scale": answers.user_scale,
+                "latency": answers.latency,
+                "priority": answers.priority,
+                "language": answers.language,
+                "freshness": answers.freshness,
+                "existing_infra": answers.existing_infra,
+                "needs_citations": answers.needs_citations,
             },
         }
 
@@ -191,6 +208,22 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
     else:
         reranker = "jinaai/jina-reranker-v2-base-multilingual"
 
+    # --- v1.2 evaluative overrides ---
+    # Multilingual corpus → multilingual embedding regardless of the tier default.
+    if answers.language in ("multilingual", "vietnamese"):
+        embed = "BAAI/bge-m3"
+        notes.append(f"Corpus {answers.language} → embedding đa ngữ BAAI/bge-m3.")
+
+    # Reuse existing Postgres as the vector store (naive template bundles qdrant).
+    if "postgres" in answers.existing_infra and template != "custom-naive-rag":
+        vector_db = "pgvector"
+        notes.append("Có 'postgres' trong infra → dùng pgvector (tái dùng Postgres).")
+
+    # Interactive latency / speed priority → drop the reranker to cut a model hop.
+    if (answers.latency == "interactive" or answers.priority == "speed") and reranker:
+        notes.append("Ưu tiên tốc độ → bỏ reranker để giảm latency.")
+        reranker = None
+
     chunk_strategy, chunk_size = _pick_chunking(answers)
 
     gpu_enabled = hw.gpu_vendor in ("nvidia", "amd", "apple")
@@ -206,7 +239,15 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
             answers.use_case in ("qa_docs", "code_rag")
             and answers.corpus_size in ("small", "medium")
         ),
+        # Citations/groundedness when the user needs source attribution.
+        "enable_citations": answers.needs_citations,
+        # Changing corpus → suggest the scheduled ingest-worker addon.
+        "enable_ingest_worker": answers.freshness in ("periodic", "streaming"),
     }
+    if answers.freshness in ("periodic", "streaming"):
+        notes.append("Dữ liệu cập nhật thường xuyên → cân nhắc addon `ingest-worker`.")
+    if answers.needs_citations:
+        notes.append("Cần trích dẫn nguồn → bật citation/groundedness gate.")
 
     return Recipe(
         template=template,
