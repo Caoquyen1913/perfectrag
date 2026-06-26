@@ -4,6 +4,11 @@
 collection: documents
 chunk_size: {{ recipe.chunk_size }}
 top_k: 5
+{%- if recipe.extras.enable_contextual_retrieval %}
+# Contextual Retrieval: prepend an LLM-generated situating sentence per chunk
+# before embedding (Anthropic). Better recall; costs 1 LLM call/chunk at ingest.
+contextual: true
+{%- endif %}
 
 store:
   name: {{ recipe.vector_db }}

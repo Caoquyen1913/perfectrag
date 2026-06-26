@@ -84,6 +84,42 @@ def test_ingest_file(tmp_path):
     assert "ANSWER" in result.answer
 
 
+def test_contextual_retrieval_prepends_context():
+    """contextual=True runs each chunk through the LLM and embeds context+chunk."""
+    captured: dict = {}
+
+    class RecordingEmbedder(FakeEmbedder):
+        def embed_batch(self, texts):
+            captured["texts"] = list(texts)
+            return super().embed_batch(texts)
+
+    rag = RAG(
+        store=FakeStore(), embedder=RecordingEmbedder(), llm=FakeLLM(),
+        parser=FakeParser(), chunk_size=4, top_k=2, contextual=True,
+    )
+    n = rag.ingest_text("alpha beta gamma delta epsilon zeta eta theta", source="x")
+    assert n == 2
+    # FakeLLM.generate returns "ANSWER[...]" → prepended before each chunk
+    assert all(t.startswith("ANSWER[") for t in captured["texts"])
+    assert all("\n\n" in t for t in captured["texts"])
+
+
+def test_contextual_off_by_default_embeds_raw_chunk():
+    captured: dict = {}
+
+    class RecordingEmbedder(FakeEmbedder):
+        def embed_batch(self, texts):
+            captured["texts"] = list(texts)
+            return super().embed_batch(texts)
+
+    rag = RAG(
+        store=FakeStore(), embedder=RecordingEmbedder(), llm=FakeLLM(),
+        parser=FakeParser(), chunk_size=4, top_k=2,
+    )
+    rag.ingest_text("alpha beta gamma delta", source="x")
+    assert captured["texts"] == ["alpha beta gamma delta"]
+
+
 def test_from_dict_builds_components(tmp_path, monkeypatch):
     """Verify the factory chain. Heavy backends mocked via lazy import failure paths."""
     # Use Chroma in-memory as the one backend we can test without external deps

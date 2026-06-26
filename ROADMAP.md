@@ -50,8 +50,9 @@
 ## TRACK B — Contextual Retrieval + Eval quality gate (quick-win chất lượng lớn nhất)
 
 ### B.1 Contextual Retrieval (Anthropic) — backbone-agnostic
-- [ ] Ingest option: LLM prepend 1–2 câu context cho mỗi chunk **trước khi embed + BM25** (giảm 35–67% lỗi retrieval). Dùng prompt caching để rẻ.
-- [ ] Thêm cờ `extras.enable_contextual_retrieval`, áp cho cả 4 template.
+- [x] Ingest option trong core library: `RAG(contextual=True)` → LLM prepend 1 câu context/chunk trước khi embed (`_contextualize`, fallback an toàn nếu không có LLM). `from_dict` đọc `contextual:`.
+- [x] Cờ `extras.enable_contextual_retrieval` (bật cho qa_docs/code_rag, corpus small/medium) → render `contextual: true` trong `perfectrag.yml` (custom-naive-rag). 2 test mới.
+- [ ] Áp dụng cho cả backbone upstream (ragflow/lightrag/dify) — cần hook ingest riêng của từng backbone (follow-up).
 - [ ] Pairs tốt với **parent-document retrieval** (embed chunk nhỏ, trả parent lớn).
 
 ### B.2 Eval harness + CI quality gate (đóng "trust gap")

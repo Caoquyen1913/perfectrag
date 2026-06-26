@@ -199,6 +199,13 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
     extras: dict[str, Any] = {
         "enable_graphrag": answers.use_case == "graphrag" or answers.multi_hop,
         "enable_hybrid_search": answers.use_case in ("qa_docs", "code_rag"),
+        # Contextual Retrieval (Anthropic) — big quality win, one LLM call/chunk at
+        # ingest. Enable for doc/code Q&A on small/medium corpora; off for large
+        # (cost) and for graph/agent use-cases that retrieve differently.
+        "enable_contextual_retrieval": (
+            answers.use_case in ("qa_docs", "code_rag")
+            and answers.corpus_size in ("small", "medium")
+        ),
     }
 
     return Recipe(

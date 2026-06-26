@@ -77,6 +77,7 @@ class RAG:
         collection: str = "documents",
         chunk_size: int = 512,
         top_k: int = 5,
+        contextual: bool = False,
     ):
         self.store = store
         self.embedder = embedder
@@ -86,6 +87,10 @@ class RAG:
         self.collection = collection
         self.chunk_size = chunk_size
         self.top_k = top_k
+        # Contextual Retrieval (Anthropic): prepend an LLM-generated situating
+        # sentence to each chunk before embedding. Cuts retrieval failures a lot
+        # at the cost of one cheap LLM call per chunk at ingest time.
+        self.contextual = contextual
 
     @classmethod
     def from_config(cls, path: str | Path) -> RAG:
@@ -120,6 +125,7 @@ class RAG:
             collection=cfg.get("collection", "documents"),
             chunk_size=int(cfg.get("chunk_size", 512)),
             top_k=int(cfg.get("top_k", 5)),
+            contextual=bool(cfg.get("contextual", False)),
         )
 
     # --- ingestion ---
@@ -137,24 +143,13 @@ class RAG:
         if self.parser is None:
             self.parser = parsers.build("simple")
         text = self.parser.parse(str(fp))
-        chunks_text = _chunk_text(text, self.chunk_size)
-        if not chunks_text:
-            return 0
-        chunks = [
-            Chunk(
-                id=str(uuid.uuid4()),
-                text=t,
-                source=str(fp),
-                metadata={"chunk_index": i},
-            )
-            for i, t in enumerate(chunks_text)
-        ]
-        vectors = self.embedder.embed_batch([c.text for c in chunks])
-        self.store.ensure_collection(self.collection, self.embedder.dim or len(vectors[0]))
-        self.store.upsert(self.collection, chunks, vectors)
-        return len(chunks)
+        return self._index(text, source=str(fp))
 
     def ingest_text(self, text: str, source: str = "inline") -> int:
+        return self._index(text, source=source)
+
+    def _index(self, text: str, *, source: str) -> int:
+        """Chunk → (optionally) contextualize → embed → upsert. Returns chunk count."""
         chunks_text = _chunk_text(text, self.chunk_size)
         if not chunks_text:
             return 0
@@ -162,10 +157,32 @@ class RAG:
             Chunk(id=str(uuid.uuid4()), text=t, source=source, metadata={"chunk_index": i})
             for i, t in enumerate(chunks_text)
         ]
-        vectors = self.embedder.embed_batch([c.text for c in chunks])
+        embed_inputs = [
+            self._contextualize(text, c.text) if self.contextual else c.text
+            for c in chunks
+        ]
+        vectors = self.embedder.embed_batch(embed_inputs)
         self.store.ensure_collection(self.collection, self.embedder.dim or len(vectors[0]))
         self.store.upsert(self.collection, chunks, vectors)
         return len(chunks)
+
+    def _contextualize(self, document: str, chunk: str) -> str:
+        """Prepend a one-sentence situating context (Anthropic Contextual Retrieval).
+
+        Falls back to the raw chunk if no LLM is configured or the call fails."""
+        if self.llm is None:
+            return chunk
+        prompt = (
+            "<document>\n" + document[:8000] + "\n</document>\n"
+            "<chunk>\n" + chunk + "\n</chunk>\n"
+            "Give a short, single-sentence context that situates this chunk within "
+            "the document to improve search retrieval. Answer with the context only."
+        )
+        try:
+            context = self.llm.generate(prompt, max_tokens=80).strip()
+        except Exception:
+            return chunk
+        return f"{context}\n\n{chunk}" if context else chunk
 
     # --- query ---
 
