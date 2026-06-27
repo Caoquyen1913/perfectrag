@@ -1,56 +1,56 @@
 # Templates
 
-Mỗi template là một thư mục Copier chứa docker-compose + env + skeleton files. Được render với 3 context namespaces: `recipe`, `hw`, `answers`.
+Each template is a Copier directory containing docker-compose + env + skeleton files. It's rendered with 3 context namespaces: `recipe`, `hw`, `answers`.
 
 ## Available
 
 ### custom-naive-rag
 
-Minimal DIY stack cho CPU-only / learning.
+Minimal DIY stack for CPU-only / learning.
 
 - **Services**: Qdrant, Ollama, FastAPI app, open-webui, ollama-pull helper
-- **UI**: open-webui tại `:3000`, FastAPI `/docs` tại `:8000`
+- **UI**: open-webui at `:3000`, FastAPI `/docs` at `:8000`
 - **Ingest**: `POST /ingest` (multipart file)
-- **Query**: `POST /query` JSON hoặc OpenAI-compatible `/v1/chat/completions`
-- **Khi nào chọn**: CPU-only + corpus nhỏ + qa_docs
+- **Query**: `POST /query` JSON or OpenAI-compatible `/v1/chat/completions`
+- **When to choose**: CPU-only + small corpus + qa_docs
 
 ### ragflow-stack
 
-Production-grade RAG với hybrid search, deep doc parsing, agentic, MCP-native.
+Production-grade RAG with hybrid search, deep doc parsing, agentic, MCP-native.
 
 - **Backbone**: [RAGFlow v0.17.2](https://github.com/infiniflow/ragflow)
 - **Services**: Elasticsearch, MySQL, Redis, MinIO, Ollama, ragflow-server
-- **UI**: RAGFlow Console tại `:80`
-- **Khi nào chọn**: Q&A hybrid search, cần ingest PDF phức tạp, cần agent + tool-calling, team/production
+- **UI**: RAGFlow Console at `:80`
+- **When to choose**: Q&A hybrid search, need to ingest complex PDFs, need agent + tool-calling, team/production
 
 ### lightrag-stack
 
-GraphRAG cost-efficient với dual-level retrieval.
+Cost-efficient GraphRAG with dual-level retrieval.
 
 - **Backbone**: [LightRAG](https://github.com/HKUDS/LightRAG)
 - **Services**: Ollama, lightrag server, open-webui chat
-- **UI**: LightRAG WebUI tại `:9621` (graph visualize + ingest), open-webui tại `:3000`
+- **UI**: LightRAG WebUI at `:9621` (graph visualize + ingest), open-webui at `:3000`
 - **Modes**: `naive`, `local`, `global`, `hybrid`
-- **Khi nào chọn**: multi-hop reasoning, knowledge graph, cần entity/relation
+- **When to choose**: multi-hop reasoning, knowledge graph, need entities/relations
 
 ### dify-stack
 
-Visual workflow + agent builder với marketplace.
+Visual workflow + agent builder with marketplace.
 
 - **Backbone**: [Dify v1.3.1](https://github.com/langgenius/dify)
 - **Services**: Postgres, Redis, Qdrant, Ollama, api, worker, web, nginx
-- **UI**: Dify Console tại `:80`
-- **Khi nào chọn**: workflow/chatflow bằng UI kéo-thả, team không code
+- **UI**: Dify Console at `:80`
+- **When to choose**: workflow/chatflow via drag-and-drop UI, non-coding teams
 
 ### code-graph-rag
 
-Code intelligence cho AI coding agent (Claude Code / Cursor) — symbol-level
-navigation thay vì naive vector search.
+Code intelligence for AI coding agents (Claude Code / Cursor) — symbol-level
+navigation instead of naive vector search.
 
-- **Core (no Docker)**: `mcp.yaml` cắm sẵn **Serena** (LSP, 30+ ngôn ngữ) + **ast-grep**
+- **Core (no Docker)**: `mcp.yaml` pre-wired with **Serena** (LSP, 30+ languages) + **ast-grep**
 - **Optional graph**: Memgraph + Lab UI (`docker compose up`)
 - **Optional semantic**: `perfectrag add mcp claude-context` (Milvus)
-- **Khi nào chọn**: use-case `code_rag` (tự động route vào đây). Xem [code-graph.md](code-graph.md).
+- **When to choose**: the `code_rag` use-case (auto-routed here). See [code-graph.md](code-graph.md).
 
 ### r2r-stack
 
@@ -58,19 +58,19 @@ Production all-in-one RAG: hybrid+RRF, GraphRAG, multimodal, agentic Deep Resear
 
 - **Backbone**: [R2R](https://github.com/SciPhi-AI/R2R) (`sciphiai/r2r`)
 - **Services**: Postgres+pgvector, Ollama, r2r (REST API + dashboard `:7272`)
-- **Khi nào chọn**: muốn agentic RAG all-in-one (opt-in qua `--template r2r-stack`)
+- **When to choose**: you want all-in-one agentic RAG (opt-in via `--template r2r-stack`)
 
 ### onyx-stack
 
 Enterprise connector-based search (Slack/Drive/GitHub/Confluence, permission-aware).
 
 - **Backbone**: [Onyx](https://github.com/onyx-dot-app/onyx) (ex-Danswer)
-- **Services**: Postgres, Vespa, Redis, Onyx api/web; README trỏ upstream compose cho production
-- **Khi nào chọn**: "chat trên data công ty" thay vì PDF upload (opt-in qua `--template onyx-stack`)
+- **Services**: Postgres, Vespa, Redis, Onyx api/web; README points to the upstream compose for production
+- **When to choose**: "chat over company data" instead of PDF upload (opt-in via `--template onyx-stack`)
 
 ## Contribute a template
 
-1. Tạo thư mục `src/perfectrag/templates/<name>/`
+1. Create the directory `src/perfectrag/templates/<name>/`
 2. Add `copier.yml`:
    ```yaml
    _templates_suffix: .jinja
@@ -79,11 +79,11 @@ Enterprise connector-based search (Slack/Drive/GitHub/Confluence, permission-awa
    _exclude: [copier.yml, __init__.py]
    project_name: { type: str, default: my-rag }
    ```
-3. Add template files với extension `.jinja`: `docker-compose.yml.jinja`, `.env.jinja`, `README.md.jinja`, `mcp.yaml.jinja`.
-4. Dùng variables: `{{ recipe.llm_model }}`, `{{ hw.gpu_vendor }}`, `{{ answers.use_case }}`.
-5. Add entry vào `_DESCRIPTIONS` trong `src/perfectrag/scaffolder.py`.
-6. (Optional) Update `_pick_template()` trong `src/perfectrag/recipes.py` để wizard tự gợi ý template mới cho use-case nào.
-7. Add test fixture + e2e test trong `tests/e2e/test_scaffold.py`.
+3. Add template files with the `.jinja` extension: `docker-compose.yml.jinja`, `.env.jinja`, `README.md.jinja`, `mcp.yaml.jinja`.
+4. Use variables: `{{ recipe.llm_model }}`, `{{ hw.gpu_vendor }}`, `{{ answers.use_case }}`.
+5. Add an entry to `_DESCRIPTIONS` in `src/perfectrag/scaffolder.py`.
+6. (Optional) Update `_pick_template()` in `src/perfectrag/recipes.py` so the wizard auto-suggests the new template for a given use-case.
+7. Add a test fixture + e2e test in `tests/e2e/test_scaffold.py`.
 
 ## Template variables reference
 

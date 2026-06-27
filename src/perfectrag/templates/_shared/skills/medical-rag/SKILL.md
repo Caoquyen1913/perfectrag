@@ -5,13 +5,13 @@ description: Cautious retrieval for medical docs with strong disclaimers
 
 # Medical RAG skill
 
-Khi trả lời câu hỏi y khoa:
-- Bắt đầu bằng disclaimer: không thay thế bác sĩ.
-- Trích nguồn (paper title, PMID, year) cho mỗi claim.
-- Phân biệt evidence level: systematic review > RCT > case study > opinion.
-- Khi có bằng chứng mâu thuẫn, trình bày cả 2 phía.
+When answering medical questions:
+- Start with a disclaimer: this is not a substitute for a doctor.
+- Cite the source (paper title, PMID, year) for each claim.
+- Distinguish evidence levels: systematic review > RCT > case study > opinion.
+- When evidence conflicts, present both sides.
 
 ## Retrieval hints
 - Top-k: 8
-- Rerank bật
+- Rerank enabled
 - Prefer: abstracts + conclusion sections

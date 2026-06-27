@@ -46,7 +46,7 @@ def _extract_description(content: str) -> str:
 def add_skill_to_project(name: str, project_dir: Path) -> None:
     bundled = list_bundled_skills()
     if name not in bundled:
-        raise KeyError(f"Không có bundled skill '{name}'. Chạy `perfectrag list skills`.")
+        raise KeyError(f"No bundled skill '{name}'. Run `perfectrag list skills`.")
     src_root = files(BUNDLED_SKILLS_PKG).joinpath(name)
     dst_root = project_dir / "skills" / name
     dst_root.mkdir(parents=True, exist_ok=True)

@@ -26,9 +26,9 @@ ENTRY_POINT_GROUP = "perfectrag.templates"
 _BUILTIN_DESCRIPTIONS = {
     "custom-naive-rag": "FastAPI + Qdrant + Ollama + open-webui — minimal DIY stack",
     "ragflow-stack":    "RAGFlow — hybrid search, deep doc parsing, agentic, MCP-ready",
-    "lightrag-stack":   "LightRAG — GraphRAG với dual-level retrieval + WebUI",
-    "dify-stack":       "Dify — visual workflow/agent builder với marketplace",
-    "code-graph-rag":   "Code intelligence — Serena LSP + ast-grep MCP (+ Memgraph graph), cho Claude Code",
+    "lightrag-stack":   "LightRAG — GraphRAG with dual-level retrieval + WebUI",
+    "dify-stack":       "Dify — visual workflow/agent builder with marketplace",
+    "code-graph-rag":   "Code intelligence — Serena LSP + ast-grep MCP (+ Memgraph graph), for Claude Code",
     "r2r-stack":        "R2R — production all-in-one: hybrid+RRF, GraphRAG, multimodal, agentic (Postgres/pgvector)",
     "onyx-stack":       "Onyx (ex-Danswer) — enterprise connector search (Slack/Drive/GitHub/Confluence), permission-aware",
 }
@@ -76,7 +76,7 @@ def template_path(template: str) -> Path:
     third = _third_party_templates().get(template)
     if third is not None and third["path"].is_dir():
         return third["path"]
-    raise ValueError(f"Template không tồn tại: {template}")
+    raise ValueError(f"Template does not exist: {template}")
 
 
 def render(

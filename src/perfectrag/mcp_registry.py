@@ -12,49 +12,49 @@ import yaml
 
 REGISTRY: dict[str, dict] = {
     "filesystem": {
-        "description": "Đọc/ghi file trong thư mục được whitelist (read-only by default)",
+        "description": "Read/write files in whitelisted directories (read-only by default)",
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-filesystem", "${PWD}/data"],
         "env": [],
     },
     "fetch": {
-        "description": "Fetch URL và convert sang markdown cho LLM",
+        "description": "Fetch a URL and convert it to markdown for the LLM",
         "command": "uvx",
         "args": ["mcp-server-fetch"],
         "env": [],
     },
     "tavily": {
-        "description": "Tavily web search (cần TAVILY_API_KEY)",
+        "description": "Tavily web search (requires TAVILY_API_KEY)",
         "command": "npx",
         "args": ["-y", "mcp-tavily"],
         "env": ["TAVILY_API_KEY"],
     },
     "brave-search": {
-        "description": "Brave web search (cần BRAVE_API_KEY)",
+        "description": "Brave web search (requires BRAVE_API_KEY)",
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-brave-search"],
         "env": ["BRAVE_API_KEY"],
     },
     "postgres": {
-        "description": "Query Postgres read-only (cần POSTGRES_URL)",
+        "description": "Query Postgres read-only (requires POSTGRES_URL)",
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-postgres", "${POSTGRES_URL}"],
         "env": ["POSTGRES_URL"],
     },
     "sqlite": {
-        "description": "Query SQLite database local",
+        "description": "Query a local SQLite database",
         "command": "uvx",
         "args": ["mcp-server-sqlite", "--db-path", "${PWD}/data/app.db"],
         "env": [],
     },
     "github": {
-        "description": "GitHub repos / issues / PRs (cần GITHUB_PERSONAL_ACCESS_TOKEN)",
+        "description": "GitHub repos / issues / PRs (requires GITHUB_PERSONAL_ACCESS_TOKEN)",
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-github"],
         "env": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
     },
     "memory": {
-        "description": "Persistent knowledge-graph memory cho agent",
+        "description": "Persistent knowledge-graph memory for the agent",
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-memory"],
         "env": [],
@@ -78,13 +78,13 @@ REGISTRY: dict[str, dict] = {
         "env": [],
     },
     "firecrawl": {
-        "description": "Firecrawl MCP — JS rendering, sitemap crawl (cần FIRECRAWL_API_KEY nếu dùng cloud)",
+        "description": "Firecrawl MCP — JS rendering, sitemap crawl (requires FIRECRAWL_API_KEY if using cloud)",
         "command": "npx",
         "args": ["-y", "firecrawl-mcp"],
         "env": ["FIRECRAWL_API_KEY"],
     },
     "notion": {
-        "description": "Notion API — read pages/databases (cần NOTION_API_KEY)",
+        "description": "Notion API — read pages/databases (requires NOTION_API_KEY)",
         "command": "npx",
         "args": ["-y", "@notionhq/notion-mcp-server"],
         "env": ["NOTION_API_KEY"],
@@ -102,7 +102,7 @@ REGISTRY: dict[str, dict] = {
         "env": ["CONFLUENCE_URL", "CONFLUENCE_API_TOKEN"],
     },
     "slack": {
-        "description": "Slack channels + messages (cần SLACK_BOT_TOKEN)",
+        "description": "Slack channels + messages (requires SLACK_BOT_TOKEN)",
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-slack"],
         "env": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
@@ -110,20 +110,20 @@ REGISTRY: dict[str, dict] = {
     # --- Code intelligence (for code_rag / Claude Code) ---
     "serena": {
         "description": "Serena — LSP-based code intelligence: find_symbol, find_referencing_symbols, "
-                       "call hierarchy, symbol-level edits (30+ ngôn ngữ, không cần embeddings)",
+                       "call hierarchy, symbol-level edits (30+ languages, no embeddings needed)",
         "command": "uvx",
         "args": ["--from", "git+https://github.com/oraios/serena", "serena-mcp-server"],
         "env": [],
     },
     "ast-grep": {
-        "description": "ast-grep — structural AST search/rewrite theo pattern (find_code, dump_syntax_tree)",
+        "description": "ast-grep — structural AST search/rewrite by pattern (find_code, dump_syntax_tree)",
         "command": "uvx",
         "args": ["ast-grep-mcp"],
         "env": [],
     },
     "claude-context": {
         "description": "Claude Context (Zilliz) — semantic code search: AST chunking + Milvus, "
-                       "hybrid dense+BM25, incremental reindex (cho repo lớn)",
+                       "hybrid dense+BM25, incremental reindex (for large repos)",
         "command": "npx",
         "args": ["-y", "@zilliz/claude-context-mcp@latest"],
         "env": ["OPENAI_API_KEY", "MILVUS_ADDRESS"],
@@ -145,7 +145,7 @@ def _load(path: Path) -> dict:
 
 def add_mcp_to_project(name: str, project_dir: Path) -> None:
     if name not in REGISTRY:
-        raise KeyError(f"Không biết MCP '{name}'. Chạy `perfectrag list mcp` để xem.")
+        raise KeyError(f"Unknown MCP '{name}'. Run `perfectrag list mcp` to see options.")
     info = REGISTRY[name]
     path = _mcp_path(project_dir)
     data = _load(path)

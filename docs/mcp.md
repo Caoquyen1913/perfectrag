@@ -12,11 +12,11 @@ servers:
     env: { VAR: "${VAR}" }   # optional
 ```
 
-Tương thích với Claude Code / Cursor / Claude Desktop MCP config → portable.
+Compatible with Claude Code / Cursor / Claude Desktop MCP config → portable.
 
 ## Built-in registry (10 servers)
 
-`perfectrag list mcp` để xem danh sách cập nhật.
+`perfectrag list mcp` to see the up-to-date list.
 
 | Name | Description | Env vars required |
 |---|---|---|
@@ -37,10 +37,10 @@ Tương thích với Claude Code / Cursor / Claude Desktop MCP config → portab
 perfectrag add mcp tavily --project .
 ```
 
-Thêm entry vào `mcp.yaml`, prompt env vars nếu cần. Sau đó:
+Adds an entry to `mcp.yaml`, prompting for env vars if needed. Then:
 
 ```bash
-# Nếu template có variable substitution cho env:
+# If the template has variable substitution for env:
 echo "TAVILY_API_KEY=your-key" >> .env.local
 
 docker compose restart
@@ -48,7 +48,7 @@ docker compose restart
 
 ## Custom MCP server
 
-Viết MCP server bằng bất kỳ ngôn ngữ nào (Python via [FastMCP](https://github.com/jlowin/fastmcp), Node via `@modelcontextprotocol/sdk`, Rust, Go...). Add vào `mcp.yaml`:
+Write an MCP server in any language (Python via [FastMCP](https://github.com/jlowin/fastmcp), Node via `@modelcontextprotocol/sdk`, Rust, Go...). Add it to `mcp.yaml`:
 
 ```yaml
 servers:
@@ -57,10 +57,10 @@ servers:
     args: ["./mcp_servers/my_tool.py"]
 ```
 
-MCP server expose `tools` (callable), `resources` (data), và `prompts` (templates). Backbone (RAGFlow / Dify) tự detect và surface trong UI.
+MCP servers expose `tools` (callable), `resources` (data), and `prompts` (templates). The backbone (RAGFlow / Dify) auto-detects and surfaces them in the UI.
 
-## Khi nào MCP có / không load được
+## When MCP does / doesn't load
 
-- **RAGFlow** (≥v0.13) hỗ trợ MCP natively qua built-in gateway.
-- **Dify** có plugin marketplace riêng — `mcp.yaml` là phần supplementary.
-- **LightRAG** / **custom-naive-rag** hiện chưa auto-load — MCP ở đây là config-only, cần viết wire-up trong app code (ví dụ load MCP servers khi start FastAPI).
+- **RAGFlow** (≥v0.13) supports MCP natively via a built-in gateway.
+- **Dify** has its own plugin marketplace — `mcp.yaml` is supplementary.
+- **LightRAG** / **custom-naive-rag** don't auto-load yet — MCP here is config-only, and you need to write the wire-up in app code (e.g. load MCP servers when FastAPI starts).

@@ -159,8 +159,8 @@ def _pick_template(answers: Answers, tier: str) -> tuple[str, list[str]]:
     if answers.use_case == "graphrag" or answers.multi_hop:
         if tier in ("cpu", "apple-low"):
             notes.append(
-                "GraphRAG yêu cầu LLM mạnh; hardware hiện tại có thể chạy chậm. "
-                "Cân nhắc upgrade hoặc giảm corpus."
+                "GraphRAG requires a strong LLM; the current hardware may run slowly. "
+                "Consider upgrading or reducing the corpus."
             )
         return "lightrag-stack", notes
 
@@ -169,7 +169,7 @@ def _pick_template(answers: Answers, tier: str) -> tuple[str, list[str]]:
 
     if answers.use_case == "multimodal":
         if tier in ("cpu", "apple-low", "gpu-8gb"):
-            notes.append("Multimodal RAG cần VRAM cao; có thể giảm chất lượng hình ảnh.")
+            notes.append("Multimodal RAG needs high VRAM; image quality may be reduced.")
         return "ragflow-stack", notes
 
     if answers.use_case == "code_rag":
@@ -193,8 +193,8 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
     if answers.privacy == "hybrid_api" and tier in _WEAK_TIERS:
         llm_model, llm_runtime = _CLOUD_LLM
         notes.append(
-            f"Hardware tier '{tier}' yếu cho LLM local; privacy=hybrid_api nên dùng "
-            f"cloud LLM ({llm_model}). Cần API key — đổi model/runtime trong perfectrag.yml nếu muốn."
+            f"Hardware tier '{tier}' is too weak for a local LLM; privacy=hybrid_api so using "
+            f"a cloud LLM ({llm_model}). Requires an API key — change model/runtime in perfectrag.yml if desired."
         )
 
     # Production scale → prefer vLLM if GPU has room
@@ -212,16 +212,16 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
     # Multilingual corpus → multilingual embedding regardless of the tier default.
     if answers.language in ("multilingual", "vietnamese"):
         embed = "BAAI/bge-m3"
-        notes.append(f"Corpus {answers.language} → embedding đa ngữ BAAI/bge-m3.")
+        notes.append(f"Corpus {answers.language} → multilingual embedding BAAI/bge-m3.")
 
     # Reuse existing Postgres as the vector store (naive template bundles qdrant).
     if "postgres" in answers.existing_infra and template != "custom-naive-rag":
         vector_db = "pgvector"
-        notes.append("Có 'postgres' trong infra → dùng pgvector (tái dùng Postgres).")
+        notes.append("'postgres' present in infra → using pgvector (reuse Postgres).")
 
     # Interactive latency / speed priority → drop the reranker to cut a model hop.
     if (answers.latency == "interactive" or answers.priority == "speed") and reranker:
-        notes.append("Ưu tiên tốc độ → bỏ reranker để giảm latency.")
+        notes.append("Speed priority → dropping reranker to cut latency.")
         reranker = None
 
     chunk_strategy, chunk_size = _pick_chunking(answers)
@@ -251,16 +251,16 @@ def recommend(answers: Answers, hw: HardwareProfile) -> Recipe:
         "corrective": answers.multi_hop or answers.priority == "accuracy",
     }
     if answers.freshness in ("periodic", "streaming"):
-        notes.append("Dữ liệu cập nhật thường xuyên → cân nhắc addon `ingest-worker`.")
+        notes.append("Data updates frequently → consider the `ingest-worker` addon.")
     if answers.needs_citations:
-        notes.append("Cần trích dẫn nguồn → bật citation/groundedness gate.")
+        notes.append("Source citations needed → enable citation/groundedness gate.")
     # Cache-Augmented Generation fits small + stable corpora (load once into the
     # context/KV-cache, skip per-query retrieval). Flag it as a recommendation.
     extras["cag_candidate"] = answers.corpus_size == "small" and answers.freshness == "static"
     if extras["cag_candidate"]:
         notes.append(
-            "Corpus nhỏ + tĩnh → cân nhắc CAG (Cache-Augmented Generation): nạp toàn bộ "
-            "vào context một lần thay vì retrieve mỗi query. Xem docs/retrieval.md."
+            "Small + static corpus → consider CAG (Cache-Augmented Generation): load the whole "
+            "corpus into context once instead of retrieving per query. See docs/retrieval.md."
         )
 
     return Recipe(
@@ -294,7 +294,7 @@ class ScoredCandidate:
 _TEMPLATE_FIT: dict[str, dict[str, Any]] = {
     "custom-naive-rag": {
         "use_cases": {"qa_docs"}, "scales": {"solo", "team"}, "corpora": {"small"},
-        "note": "đơn giản nhất, CPU-friendly, fully-local",
+        "note": "simplest, CPU-friendly, fully-local",
     },
     "ragflow-stack": {
         "use_cases": {"qa_docs", "multimodal", "code_rag"},
@@ -311,7 +311,7 @@ _TEMPLATE_FIT: dict[str, dict[str, Any]] = {
     },
     "code-graph-rag": {
         "use_cases": {"code_rag"}, "scales": {"solo", "team", "production"},
-        "corpora": {"small", "medium", "large"}, "note": "LSP symbol nav cho Claude Code",
+        "corpora": {"small", "medium", "large"}, "note": "LSP symbol nav for Claude Code",
     },
 }
 
@@ -329,16 +329,16 @@ def score_candidates(answers: Answers, hw: HardwareProfile, top_n: int = 3) -> l
         reasons: list[str] = []
         if answers.use_case in fit["use_cases"]:
             score += 5
-            reasons.append(f"khớp use-case '{answers.use_case}'")
+            reasons.append(f"matches use-case '{answers.use_case}'")
         if (answers.use_case == "graphrag" or answers.multi_hop) and tmpl == "lightrag-stack":
             score += 5
-            reasons.append("xử lý graph / multi-hop")
+            reasons.append("handles graph / multi-hop")
         if answers.user_scale in fit["scales"]:
             score += 2
-            reasons.append(f"hợp scale '{answers.user_scale}'")
+            reasons.append(f"fits scale '{answers.user_scale}'")
         if answers.corpus_size in fit["corpora"]:
             score += 1
-            reasons.append(f"hợp corpus '{answers.corpus_size}'")
+            reasons.append(f"fits corpus '{answers.corpus_size}'")
         if {"images", "tables"} & mod and tmpl == "ragflow-stack":
             score += 2
             reasons.append("multimodal parsing (docling)")
@@ -350,5 +350,5 @@ def score_candidates(answers: Answers, hw: HardwareProfile, top_n: int = 3) -> l
     if out:
         out[0].recommended = True
         if out[0].template == authoritative:
-            out[0].reasons.insert(0, "khớp routing rule (lựa chọn chính)")
+            out[0].reasons.insert(0, "matches routing rule (primary choice)")
     return out[:top_n]

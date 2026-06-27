@@ -1,6 +1,6 @@
 # Skills
 
-Skills = domain-specific instructions (prompts, retrieval params) cho RAG service. Format mirror Claude Code's skill format.
+Skills = domain-specific instructions (prompts, retrieval params) for the RAG service. The format mirrors Claude Code's skill format.
 
 ## Structure
 
@@ -37,14 +37,14 @@ description: Retrieval prompts tuned for legal documents
 perfectrag add skill legal-rag --project .
 ```
 
-Copies skeleton vào `skills/<name>/` trong project. Tự viết skill của bạn → tạo `skills/<tên>/SKILL.md` thủ công.
+Copies a skeleton into `skills/<name>/` in the project. To write your own skill, create `skills/<name>/SKILL.md` manually.
 
 ## Mount point
 
-Tất cả templates mount `./skills` read-only vào container (path tuỳ backbone):
+All templates mount `./skills` read-only into the container (path depends on the backbone):
 - `ragflow-stack`: `/ragflow/skills`
 - `lightrag-stack`: `/app/skills`
 - `dify-stack`: `/app/skills`
 - `custom-naive-rag`: `/app/skills`
 
-Backbone/UI hiện chưa auto-discover skills từ disk — user dán nội dung `SKILL.md` vào system prompt khi tạo Agent/Assistant, hoặc customize template để đọc skills tự động.
+The backbone/UI doesn't auto-discover skills from disk yet — paste the contents of `SKILL.md` into the system prompt when creating an Agent/Assistant, or customize the template to read skills automatically.

@@ -24,9 +24,9 @@ class ComponentOverrides:
 
 def run_wizard() -> Answers:
     use_case = inquirer.select(
-        message="Use-case chính của RAG service này?",
+        message="Primary use-case for this RAG service?",
         choices=[
-            Choice("qa_docs", name="Q&A trên tài liệu (PDF / Markdown / docs)"),
+            Choice("qa_docs", name="Q&A over documents (PDF / Markdown / docs)"),
             Choice("graphrag", name="GraphRAG — multi-hop reasoning, knowledge graph"),
             Choice("multimodal", name="Multimodal — text + images + tables"),
             Choice("code_rag", name="Code search / code RAG"),
@@ -36,20 +36,20 @@ def run_wizard() -> Answers:
     ).execute()
 
     modality = inquirer.checkbox(
-        message="Loại dữ liệu trong corpus? (space to toggle, enter to confirm)",
+        message="Data types in the corpus? (space to toggle, enter to confirm)",
         choices=[
-            Choice("text", name="Text thuần", enabled=True),
-            Choice("tables", name="Bảng (PDF có table)"),
-            Choice("images", name="Hình ảnh / scanned docs"),
+            Choice("text", name="Plain text", enabled=True),
+            Choice("tables", name="Tables (PDFs with tables)"),
+            Choice("images", name="Images / scanned docs"),
             Choice("code", name="Source code"),
         ],
     ).execute()
 
     privacy = inquirer.select(
-        message="Yêu cầu privacy?",
+        message="Privacy requirement?",
         choices=[
-            Choice("fully_local", name="Fully local (không gọi API cloud nào)"),
-            Choice("hybrid_api", name="Hybrid — có thể dùng API cloud cho LLM lớn"),
+            Choice("fully_local", name="Fully local (no cloud API calls at all)"),
+            Choice("hybrid_api", name="Hybrid — may use a cloud API for large LLMs"),
         ],
         default="fully_local",
     ).execute()
@@ -57,82 +57,82 @@ def run_wizard() -> Answers:
     multi_hop = False
     if use_case != "graphrag":
         multi_hop = inquirer.confirm(
-            message="Câu hỏi thường cần multi-hop reasoning (suy luận qua nhiều tài liệu)?",
+            message="Do queries typically need multi-hop reasoning (reasoning across multiple documents)?",
             default=False,
         ).execute()
 
     corpus_size = inquirer.select(
-        message="Corpus size dự kiến?",
+        message="Expected corpus size?",
         choices=[
-            Choice("small", name="Nhỏ (<10k docs)"),
-            Choice("medium", name="Vừa (10k - 1M docs)"),
-            Choice("large", name="Lớn (>1M docs)"),
+            Choice("small", name="Small (<10k docs)"),
+            Choice("medium", name="Medium (10k - 1M docs)"),
+            Choice("large", name="Large (>1M docs)"),
         ],
         default="small",
     ).execute()
 
     user_scale = inquirer.select(
-        message="Số lượng user đồng thời?",
+        message="Number of concurrent users?",
         choices=[
-            Choice("solo", name="Solo dev / cá nhân"),
+            Choice("solo", name="Solo dev / individual"),
             Choice("team", name="Team (<10 users)"),
-            Choice("production", name="Production (nhiều user, cần SLA)"),
+            Choice("production", name="Production (many users, needs SLA)"),
         ],
         default="solo",
     ).execute()
 
     latency = inquirer.select(
-        message="Độ trễ chấp nhận cho mỗi truy vấn?",
+        message="Acceptable latency per query?",
         choices=[
-            Choice("interactive", name="Interactive (<1s — chat realtime)"),
-            Choice("standard", name="Standard (vài giây)"),
-            Choice("batch", name="Batch (không gấp)"),
+            Choice("interactive", name="Interactive (<1s — realtime chat)"),
+            Choice("standard", name="Standard (a few seconds)"),
+            Choice("batch", name="Batch (no rush)"),
         ],
         default="standard",
     ).execute()
 
     priority = inquirer.select(
-        message="Ưu tiên cao nhất?",
+        message="Top priority?",
         choices=[
-            Choice("balanced", name="Cân bằng"),
-            Choice("accuracy", name="Độ chính xác"),
-            Choice("cost", name="Chi phí thấp"),
-            Choice("speed", name="Tốc độ"),
+            Choice("balanced", name="Balanced"),
+            Choice("accuracy", name="Accuracy"),
+            Choice("cost", name="Low cost"),
+            Choice("speed", name="Speed"),
         ],
         default="balanced",
     ).execute()
 
     language = inquirer.select(
-        message="Ngôn ngữ corpus?",
+        message="Corpus language?",
         choices=[
-            Choice("english", name="Tiếng Anh"),
-            Choice("multilingual", name="Đa ngữ"),
-            Choice("vietnamese", name="Tiếng Việt"),
+            Choice("english", name="English"),
+            Choice("multilingual", name="Multilingual"),
+            Choice("vietnamese", name="Vietnamese"),
         ],
         default="english",
     ).execute()
 
     freshness = inquirer.select(
-        message="Tần suất cập nhật dữ liệu?",
+        message="How often is the data updated?",
         choices=[
-            Choice("static", name="Tĩnh (ít/không đổi)"),
-            Choice("periodic", name="Định kỳ (crawl/sync theo lịch)"),
-            Choice("streaming", name="Streaming (liên tục)"),
+            Choice("static", name="Static (rarely/never changes)"),
+            Choice("periodic", name="Periodic (scheduled crawl/sync)"),
+            Choice("streaming", name="Streaming (continuous)"),
         ],
         default="static",
     ).execute()
 
     existing_infra = inquirer.checkbox(
-        message="Hạ tầng đã có sẵn? (space để chọn)",
+        message="Existing infrastructure? (space to select)",
         choices=[
-            Choice("postgres", name="PostgreSQL (có thể tái dùng làm vector store)"),
+            Choice("postgres", name="PostgreSQL (can be reused as a vector store)"),
             Choice("elasticsearch", name="Elasticsearch"),
             Choice("k8s", name="Kubernetes"),
         ],
     ).execute()
 
     needs_citations = inquirer.confirm(
-        message="Cần trích dẫn nguồn / groundedness?",
+        message="Need source citations / groundedness?",
         default=False,
     ).execute()
 
@@ -155,7 +155,7 @@ def run_wizard() -> Answers:
 def run_component_wizard(base_recipe) -> ComponentOverrides:
     """Optional power-user pass — pick specific tech. Each prompt offers 'auto' (keep base)."""
     override = inquirer.confirm(
-        message="Muốn custom components (vector DB / embed / rerank / LLM runtime)?",
+        message="Customize components (vector DB / embed / rerank / LLM runtime)?",
         default=False,
     ).execute()
     if not override:

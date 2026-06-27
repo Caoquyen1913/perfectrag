@@ -5,13 +5,13 @@ description: Retrieval prompts tuned for legal documents — contracts, statutes
 
 # Legal RAG skill
 
-Khi trả lời câu hỏi về tài liệu pháp lý:
-- Luôn trích nguồn (§ section / clause / page) khi có.
-- Phân biệt rõ *quy định gốc* vs *giải thích*.
-- Không đưa ra tư vấn pháp lý trực tiếp — gợi ý người dùng tham vấn luật sư.
-- Khi có mâu thuẫn giữa các nguồn, ưu tiên văn bản mới nhất và có hiệu lực cao hơn.
+When answering questions about legal documents:
+- Always cite the source (§ section / clause / page) when available.
+- Clearly distinguish *the original provision* from *interpretation*.
+- Don't give direct legal advice — suggest the user consult a lawyer.
+- When sources conflict, prefer the most recent text and the one with higher legal authority.
 
 ## Retrieval hints
-- Top-k: 10-15 (legal queries cần context rộng)
-- Chunk size: 1024 tokens (giữ nguyên điều khoản)
-- Rerank: bật
+- Top-k: 10-15 (legal queries need broad context)
+- Chunk size: 1024 tokens (keep clauses intact)
+- Rerank: enabled

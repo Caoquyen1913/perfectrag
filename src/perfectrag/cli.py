@@ -36,30 +36,30 @@ console = Console(legacy_windows=False)
 
 @app.command()
 def init(
-    project_dir: Path = typer.Argument(Path("./my-rag"), help="Thư mục project sẽ sinh"),
+    project_dir: Path = typer.Argument(Path("./my-rag"), help="Project directory to generate"),
     answers_file: Path | None = typer.Option(
         None, "--answers-file", "-a",
-        help="YAML chứa answers (bỏ qua wizard interactive, dùng cho CI/test)",
+        help="YAML with answers (skips the interactive wizard, for CI/test)",
     ),
     template: str | None = typer.Option(
         None, "--template", "-t",
-        help="Override template gợi ý (custom-naive-rag, ragflow-stack, lightrag-stack, dify-stack)",
+        help="Override the suggested template (custom-naive-rag, ragflow-stack, lightrag-stack, dify-stack)",
     ),
     with_addons: str | None = typer.Option(
         None, "--with", "-w",
-        help="Danh sách addons comma-separated: eval,observability,context-eng,ingest-worker,paperclip",
+        help="Comma-separated list of addons: eval,observability,context-eng,ingest-worker,paperclip",
     ),
     advise_flag: bool = typer.Option(
         False, "--advise/--no-advise",
-        help="Dùng Gemini để refine recipe (cần `perfectrag add key gemini`)",
+        help="Use Gemini to refine the recipe (needs `perfectrag add key gemini`)",
     ),
     description: str | None = typer.Option(
-        None, "--describe", help="Mô tả use-case bằng text (gợi ý: dùng chung với --advise)",
+        None, "--describe", help="Describe the use-case in text (tip: use together with --advise)",
     ),
-    force: bool = typer.Option(False, "--force", help="Ghi đè nếu project_dir đã có"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Preview recipe, không scaffold"),
+    force: bool = typer.Option(False, "--force", help="Overwrite if project_dir already exists"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview the recipe, don't scaffold"),
 ) -> None:
-    """Chạy wizard → scaffold project RAG hoàn chỉnh."""
+    """Run the wizard → scaffold a complete RAG project."""
     hw = hardware.detect()
     _show_hardware(hw)
 
@@ -72,11 +72,11 @@ def init(
     recipe = recipes.recommend(answers, hw)
     if template is not None:
         if template not in scaffolder.available_templates():
-            console.print(f"[red]Template '{template}' không tồn tại. Có sẵn: "
+            console.print(f"[red]Template '{template}' does not exist. Available: "
                           f"{', '.join(scaffolder.available_templates().keys())}[/red]")
             raise typer.Exit(1)
         recipe.template = template
-        recipe.notes.append(f"Template được override bằng --template={template}")
+        recipe.notes.append(f"Template overridden with --template={template}")
     elif answers_file is None:
         # Interactive cold-start: show the scored comparison + let the user re-choose.
         _show_ranking(answers, hw)
@@ -84,7 +84,7 @@ def init(
             chosen = _choose_template_interactive(recipe.template)
             if chosen and chosen != recipe.template:
                 recipe.template = chosen
-                recipe.notes.append(f"Bạn chọn lại template: {chosen}")
+                recipe.notes.append(f"You re-picked the template: {chosen}")
 
     # Optional Gemini refinement
     if advise_flag:
@@ -104,11 +104,11 @@ def init(
     _show_recipe(recipe)
 
     if dry_run:
-        console.print("[yellow]--dry-run, không scaffold.[/yellow]")
+        console.print("[yellow]--dry-run, not scaffolding.[/yellow]")
         raise typer.Exit(0)
 
     if project_dir.exists() and any(project_dir.iterdir()) and not force:
-        console.print(f"[red]Thư mục {project_dir} đã tồn tại và không rỗng. Dùng --force để ghi đè.[/red]")
+        console.print(f"[red]Directory {project_dir} already exists and is not empty. Use --force to overwrite.[/red]")
         raise typer.Exit(1)
 
     scaffolder.render(recipe, hw, answers, project_dir, force=force)
@@ -140,19 +140,19 @@ def init(
 
 @app.command("add")
 def add_cmd(
-    kind: str = typer.Argument(..., help="'mcp', 'skill', 'addon', hoặc 'key'"),
-    name: str = typer.Argument(..., help="Tên MCP server / skill / addon / provider"),
-    value: str | None = typer.Argument(None, help="API key value (khi kind=key)"),
+    kind: str = typer.Argument(..., help="'mcp', 'skill', 'addon', or 'key'"),
+    name: str = typer.Argument(..., help="MCP server / skill / addon / provider name"),
+    value: str | None = typer.Argument(None, help="API key value (when kind=key)"),
     project_dir: Path = typer.Option(Path("."), "--project", "-p", help="Project dir"),
 ) -> None:
-    """Add MCP server, skill, addon, hoặc API key vào perfectrag."""
+    """Add an MCP server, skill, addon, or API key to perfectrag."""
     from perfectrag import keys as _keys
     if kind == "mcp":
         add_mcp_to_project(name, project_dir)
-        console.print(f"[green]Added MCP '{name}' vào {project_dir}/mcp.yaml[/green]")
+        console.print(f"[green]Added MCP '{name}' to {project_dir}/mcp.yaml[/green]")
     elif kind == "skill":
         add_skill_to_project(name, project_dir)
-        console.print(f"[green]Added skill '{name}' vào {project_dir}/skills/[/green]")
+        console.print(f"[green]Added skill '{name}' to {project_dir}/skills/[/green]")
     elif kind == "addon":
         template_vars = _restore_template_vars(project_dir)
         spec = add_addon_to_project(name, project_dir, template_vars)
@@ -171,7 +171,7 @@ def add_cmd(
         _keys.set_key(name, value)
         console.print(f"[green]Saved {name} key to ~/.perfectrag/keys.yml (chmod 600).[/green]")
     else:
-        console.print(f"[red]Unknown kind: {kind}. Dùng 'mcp', 'skill', 'addon', 'key'.[/red]")
+        console.print(f"[red]Unknown kind: {kind}. Use 'mcp', 'skill', 'addon', 'key'.[/red]")
         raise typer.Exit(1)
 
 
@@ -211,7 +211,7 @@ def list_cmd(
     what: str = typer.Argument(..., help="'templates', 'mcp', 'skills', 'addons', 'installed', 'keys'"),
     project_dir: Path = typer.Option(Path("."), "--project", "-p", help="Project dir (for 'installed')"),
 ) -> None:
-    """Liệt kê templates / MCP / skills / addons / keys có sẵn."""
+    """List available templates / MCP / skills / addons / keys."""
     if what == "templates":
         _list_templates()
     elif what == "mcp":
@@ -225,7 +225,7 @@ def list_cmd(
     elif what == "keys":
         _list_provider_keys()
     else:
-        console.print(f"[red]Unknown: {what}. Dùng templates/mcp/skills/addons/installed/keys.[/red]")
+        console.print(f"[red]Unknown: {what}. Use templates/mcp/skills/addons/installed/keys.[/red]")
         raise typer.Exit(1)
 
 
@@ -241,20 +241,20 @@ def _list_provider_keys() -> None:
 
 @app.command()
 def hw() -> None:
-    """Chỉ detect + show hardware, không làm gì khác."""
+    """Only detect + show hardware, nothing else."""
     _show_hardware(hardware.detect())
 
 
 @app.command()
 def up(
     project_dir: Path = typer.Option(Path("."), "--project", "-p"),
-    build: bool = typer.Option(False, "--build", help="Rebuild images trước khi up"),
-    wait: bool = typer.Option(True, "--wait/--no-wait", help="Chờ healthchecks pass"),
-    timeout: int = typer.Option(300, "--timeout", help="Seconds chờ healthy"),
+    build: bool = typer.Option(False, "--build", help="Rebuild images before up"),
+    wait: bool = typer.Option(True, "--wait/--no-wait", help="Wait for healthchecks to pass"),
+    timeout: int = typer.Option(300, "--timeout", help="Seconds to wait for healthy"),
 ) -> None:
-    """Start tất cả services (base + installed addons) và chờ healthy."""
+    """Start all services (base + installed addons) and wait until healthy."""
     if not orchestrate.docker_available():
-        console.print("[red]docker không có trên PATH. Cài Docker Desktop/Engine.[/red]")
+        console.print("[red]docker not on PATH. Install Docker Desktop/Engine.[/red]")
         raise typer.Exit(1)
     console.print(f"[cyan]Starting services in {project_dir.resolve()}...[/cyan]")
     code = orchestrate.up(project_dir, detach=True, build=build)
@@ -274,15 +274,15 @@ def up(
 @app.command()
 def down(
     project_dir: Path = typer.Option(Path("."), "--project", "-p"),
-    volumes: bool = typer.Option(False, "-v", "--volumes", help="Xóa volumes"),
+    volumes: bool = typer.Option(False, "-v", "--volumes", help="Remove volumes"),
 ) -> None:
-    """Stop và remove services (base + addons)."""
+    """Stop and remove services (base + addons)."""
     raise typer.Exit(orchestrate.down(project_dir, volumes=volumes))
 
 
 @app.command()
 def logs(
-    service: str | None = typer.Argument(None, help="Service name, hoặc bỏ trống để xem all"),
+    service: str | None = typer.Argument(None, help="Service name, or leave empty to see all"),
     project_dir: Path = typer.Option(Path("."), "--project", "-p"),
     follow: bool = typer.Option(False, "-f", "--follow"),
     tail: int = typer.Option(100, "--tail"),
@@ -464,13 +464,13 @@ def web(
 
 @app.command()
 def deploy(
-    target: str = typer.Argument(..., help="helm, flyio, hoặc railway"),
+    target: str = typer.Argument(..., help="helm, flyio, or railway"),
     project_dir: Path = typer.Option(Path("."), "--project", "-p"),
     out: Path = typer.Option(Path("./deploy-out"), "--out", "-o"),
     template: str | None = typer.Option(None, "--template", "-t",
-                                        help="Override template (default: từ .copier-answers.yml)"),
+                                        help="Override template (default: from .copier-answers.yml)"),
 ) -> None:
-    """Render deploy assets (Helm chart, fly.toml, railway.json) cho production."""
+    """Render deploy assets (Helm chart, fly.toml, railway.json) for production."""
     template_vars = _restore_template_vars(project_dir)
     tmpl = template or (template_vars.get("recipe", {}) or {}).get("template", "custom-naive-rag")
     available = deployer.available_targets(tmpl)
@@ -596,7 +596,7 @@ def tune(
 def doctor(
     project_dir: Path = typer.Option(Path("."), "--project", "-p"),
 ) -> None:
-    """Chẩn đoán project: Docker, ports, disk, services, Ollama models."""
+    """Diagnose the project: Docker, ports, disk, services, Ollama models."""
     results = _doctor.run_all(project_dir)
     table = Table(title="perfectrag doctor", show_header=True)
     table.add_column("Check", style="cyan")
@@ -720,7 +720,7 @@ def _template_choices(default: str) -> list[tuple[str, str]]:
     from perfectrag.scaffolder import available_templates
 
     avail = available_templates()
-    out = [(default, f"✓ Nhận gợi ý: {default} — {avail.get(default, '')}")]
+    out = [(default, f"✓ Recommended: {default} — {avail.get(default, '')}")]
     out += [(name, f"{name} — {desc}") for name, desc in avail.items() if name != default]
     return out
 
@@ -732,18 +732,18 @@ def _choose_template_interactive(default: str) -> str | None:
 
     choices = [Choice(value, name=label) for value, label in _template_choices(default)]
     return inquirer.select(
-        message="Chọn backbone (Enter = nhận gợi ý, ↑↓ để xem lựa chọn khác):",
+        message="Choose a backbone (Enter = accept the recommendation, ↑↓ to see other options):",
         choices=choices, default=default,
     ).execute()
 
 
 def _show_ranking(answers: recipes.Answers, hw: hardware.HardwareProfile) -> None:
     ranked = recipes.score_candidates(answers, hw)
-    table = Table(title="Đánh giá template (xếp hạng theo fit)")
+    table = Table(title="Template evaluation (ranked by fit)")
     table.add_column("#", style="dim")
     table.add_column("Template", style="cyan")
     table.add_column("Score")
-    table.add_column("Vì sao")
+    table.add_column("Why")
     for i, c in enumerate(ranked, 1):
         name = f"[bold green]{c.template}[/bold green] ✓" if c.recommended else c.template
         table.add_row(str(i), name, str(c.score), "; ".join(c.reasons))
@@ -753,7 +753,7 @@ def _show_ranking(answers: recipes.Answers, hw: hardware.HardwareProfile) -> Non
 def _list_templates() -> None:
     from perfectrag.scaffolder import available_templates
 
-    table = Table(title="Templates bundled")
+    table = Table(title="Bundled templates")
     table.add_column("Name", style="cyan")
     table.add_column("Description")
     for name, desc in available_templates().items():
