@@ -2,7 +2,9 @@
 
 > RAG scaffolder **+ embedded Python library**. Run with Docker, without Docker, or as a SaaS API — your choice.
 
-**v1.1 adds**: Docker-free local mode (`from perfectrag import RAG`), full component matrix (5 vector DBs × 5 embeddings × 4 rerankers × 6 LLM runtimes), Gemini advisor, and a built-in OpenAI-style Query API with bearer auth + rate limit.
+**v1.2 adds**: 3 new backbones (`code-graph-rag` for Claude Code, `r2r-stack`, `onyx-stack` → 7 total), advanced retrieval in the library (Contextual Retrieval, parent-document, query-expansion + RRF, Corrective RAG), a retrieval-quality eval gate (`eval --retrieval`), a scored advisor, and 6 new wizard questions. See the [changelog](CHANGELOG.md).
+
+**v1.1**: Docker-free local mode (`from perfectrag import RAG`), full component matrix (5 vector DBs × 5 embeddings × 4 rerankers × 6 LLM runtimes), Gemini advisor, and a built-in OpenAI-style Query API with bearer auth + rate limit.
 
 ## Three ways to use it
 
@@ -60,13 +62,15 @@ That gives you a RAG service, eval dashboard, observability gateway, and multi-a
 | `perfectrag init DIR --template ragflow-stack` | Force a specific backbone |
 | `perfectrag add mcp/skill/addon <name>` | Extend a generated project |
 | `perfectrag up / down / logs / doctor` | Orchestrate the generated project |
-| `perfectrag eval --dataset qa.jsonl` | Run RAGAS + DeepEval (needs `eval` addon) |
+| `perfectrag eval --dataset qa.jsonl` | Generation metrics — RAGAS + DeepEval (needs `eval` addon) |
+| `perfectrag eval --retrieval -d golden.jsonl --gate` | Retrieval metrics (recall@k/MRR/nDCG) + CI gate, no Docker |
+| `perfectrag advise "..."` | Scored, evaluative recipe recommendation |
 | `perfectrag deploy helm/flyio/railway` | Render production deploy assets |
 | `perfectrag web` | Start FastAPI backend for Next.js UI |
 | `perfectrag list templates/mcp/skills/addons/installed` | Show catalogues |
 | `perfectrag hw` | Show detected hardware + tier |
 
-## Templates (v1.0)
+## Templates (7)
 
 | Template | Use-case | Backbone |
 |---|---|---|
@@ -74,8 +78,25 @@ That gives you a RAG service, eval dashboard, observability gateway, and multi-a
 | `ragflow-stack` | Production Q&A + hybrid search + agentic | [RAGFlow](https://github.com/infiniflow/ragflow) |
 | `lightrag-stack` | GraphRAG / multi-hop reasoning | [LightRAG](https://github.com/HKUDS/LightRAG) |
 | `dify-stack` | Workflow / agent / no-code team | [Dify](https://github.com/langgenius/dify) |
+| `code-graph-rag` | Code intelligence for Claude Code | Serena (LSP) + ast-grep MCP (+ Memgraph) |
+| `r2r-stack` | Production all-in-one + agentic RAG | [R2R](https://github.com/SciPhi-AI/R2R) |
+| `onyx-stack` | Enterprise connector search | [Onyx](https://github.com/onyx-dot-app/onyx) |
 
 Third-party templates: publish via `[project.entry-points."perfectrag.templates"]` — users get them after `pip install`.
+
+## Advanced retrieval (v1.2)
+
+The embedded library supports techniques you enable in `perfectrag.yml` (the wizard
+turns them on automatically based on your answers):
+
+| Technique | Config | When it helps |
+|---|---|---|
+| Contextual Retrieval | `contextual: true` | recall on terse chunks (needs a capable LLM) |
+| Parent-document | `parent_chunk_size: 2048` | precise match + richer context, free |
+| Query expansion + RRF | `query_expansion: 3` | terse / multi-hop queries |
+| Corrective RAG (CRAG) | `corrective: true` | re-retrieve when results look off |
+
+Measure them: `perfectrag eval --retrieval -d golden.jsonl --gate`. See [docs/retrieval.md](docs/retrieval.md).
 
 ## Addons (v1.0)
 
@@ -116,6 +137,8 @@ Also supports `flyio` and `railway`. See [docs/deploy.md](docs/deploy.md).
 
 ## Docs
 
+- [Advanced retrieval](docs/retrieval.md)
+- [Code intelligence (code-graph-rag)](docs/code-graph.md)
 - [Addons](docs/addons.md)
 - [Eval](docs/eval.md)
 - [Observability](docs/observability.md)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project purpose
 
-`perfectrag` is a **meta-framework / scaffolder** — not a RAG service itself. It ships a CLI (`perfectrag`) that asks a few questions, detects hardware, and renders a complete project (docker-compose + `.env` + `mcp.yaml` + `skills/`) wrapping one of four open-source RAG backbones. Users run `docker compose up` and get a working RAG service + UI without writing code.
+`perfectrag` is a **meta-framework / scaffolder** — not a RAG service itself. It ships a CLI (`perfectrag`) that asks a few questions, detects hardware, and renders a complete project (docker-compose + `.env` + `mcp.yaml` + `skills/`) wrapping one of seven open-source RAG backbones. Users run `docker compose up` and get a working RAG service + UI without writing code.
 
 When editing, keep this meta nature in mind: most "work" happens in the generated project, not here. This repo's job is to pick the right template and fill in the right variables.
 
@@ -16,7 +16,7 @@ python -m venv .venv && .venv/Scripts/activate      # Windows
 pip install -e ".[dev]"
 
 # dev loop
-pytest                                              # 49 tests
+pytest                                              # 146 tests
 pytest tests/unit/test_recipes.py -v                # single file
 pytest -k "graphrag"                                # single test by substring
 ruff check src tests
@@ -69,4 +69,4 @@ scaffolder.render(...)   →  Copier renders templates/<recipe.template>/
 
 - **Docker isn't available in this dev env** (no `docker.exe` on PATH). E2E scaffold tests validate compose files by parsing YAML with PyYAML, not by running `docker compose config`. If you add live-Docker tests, gate them behind an opt-in CLI flag / pytest marker.
 
-- **The 4 templates target 4 distinct use-cases**: `custom-naive-rag` (simplest, DIY FastAPI), `ragflow-stack` (production default), `lightrag-stack` (GraphRAG only), `dify-stack` (workflow/agent builder). Don't let them converge — their reasons to exist are the routing rules in `recipes._pick_template`.
+- **The 7 templates target distinct use-cases**: `custom-naive-rag` (simplest, DIY FastAPI), `ragflow-stack` (production default), `lightrag-stack` (GraphRAG only), `dify-stack` (workflow/agent builder), `code-graph-rag` (code intelligence for Claude Code — auto-routed from `code_rag`), `r2r-stack` (all-in-one agentic, opt-in via `--template`), `onyx-stack` (enterprise connectors, opt-in). Don't let them converge — their reasons to exist are the routing rules in `recipes._pick_template`.

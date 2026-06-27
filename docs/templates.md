@@ -42,6 +42,32 @@ Visual workflow + agent builder với marketplace.
 - **UI**: Dify Console tại `:80`
 - **Khi nào chọn**: workflow/chatflow bằng UI kéo-thả, team không code
 
+### code-graph-rag
+
+Code intelligence cho AI coding agent (Claude Code / Cursor) — symbol-level
+navigation thay vì naive vector search.
+
+- **Core (no Docker)**: `mcp.yaml` cắm sẵn **Serena** (LSP, 30+ ngôn ngữ) + **ast-grep**
+- **Optional graph**: Memgraph + Lab UI (`docker compose up`)
+- **Optional semantic**: `perfectrag add mcp claude-context` (Milvus)
+- **Khi nào chọn**: use-case `code_rag` (tự động route vào đây). Xem [code-graph.md](code-graph.md).
+
+### r2r-stack
+
+Production all-in-one RAG: hybrid+RRF, GraphRAG, multimodal, agentic Deep Research.
+
+- **Backbone**: [R2R](https://github.com/SciPhi-AI/R2R) (`sciphiai/r2r`)
+- **Services**: Postgres+pgvector, Ollama, r2r (REST API + dashboard `:7272`)
+- **Khi nào chọn**: muốn agentic RAG all-in-one (opt-in qua `--template r2r-stack`)
+
+### onyx-stack
+
+Enterprise connector-based search (Slack/Drive/GitHub/Confluence, permission-aware).
+
+- **Backbone**: [Onyx](https://github.com/onyx-dot-app/onyx) (ex-Danswer)
+- **Services**: Postgres, Vespa, Redis, Onyx api/web; README trỏ upstream compose cho production
+- **Khi nào chọn**: "chat trên data công ty" thay vì PDF upload (opt-in qua `--template onyx-stack`)
+
 ## Contribute a template
 
 1. Tạo thư mục `src/perfectrag/templates/<name>/`

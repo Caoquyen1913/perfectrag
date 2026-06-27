@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "perfectrag"
-version = "1.1.0"
-description = "RAG scaffolder + embedded library: Docker-free local mode, multi-backend (Qdrant/Milvus/Chroma/LanceDB/pgvector), Gemini advisor, SaaS Query API with auth + rate limit"
+version = "1.2.0"
+description = "RAG scaffolder + embedded library: 7 backbones incl. code-graph/R2R/Onyx, advanced retrieval (contextual, parent-doc, query-expansion+RRF, CRAG), scored advisor, SaaS Query API with auth + rate limit"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+- **3 new templates (now 7)**:
+  - `code-graph-rag` — code intelligence for AI coding agents (Claude Code): Serena (LSP) + ast-grep over MCP, optional Memgraph graph. `code_rag` use-case routes here.
+  - `r2r-stack` — [R2R](https://github.com/SciPhi-AI/R2R) production all-in-one (hybrid+RRF, GraphRAG, multimodal, agentic) on Postgres/pgvector.
+  - `onyx-stack` — [Onyx](https://github.com/onyx-dot-app/onyx) enterprise connector search (Slack/Drive/GitHub/Confluence).
+- **Advanced retrieval in the embedded library** (all opt-in via `perfectrag.yml` / `RAG(...)`):
+  - **Contextual Retrieval** (`contextual: true`) — Anthropic-style per-chunk situating context before embedding.
+  - **Parent-document retrieval** (`parent_chunk_size: N`) — embed small chunks, feed the larger parent to the LLM.
+  - **Query expansion + Reciprocal Rank Fusion** (`query_expansion: N`) — N alternate phrasings fused with RRF.
+  - **Corrective RAG / CRAG** (`corrective: true`) — grade results, re-retrieve once if irrelevant.
+  - The wizard auto-enables these based on answers (e.g. `priority: accuracy` / `multi_hop` → expansion + CRAG).
+- **Retrieval-quality metrics + CI gate**: `perfectrag.core.evaluation` (recall@k / MRR / nDCG) and `perfectrag eval --retrieval [--k N --gate]` — measures retrieval separately from generation, no Docker.
+- **Scored advisor**: `recipes.score_candidates()` ranks all templates with reasons; `perfectrag advise` shows an evaluative table, not just one pick.
+- **6 new wizard questions** driving the recipe: `latency`, `priority`, `language`, `freshness`, `existing_infra`, `needs_citations` (e.g. multilingual→bge-m3, postgres infra→pgvector, interactive→drop reranker).
+- **3 code-intelligence MCP servers**: `serena`, `ast-grep`, `claude-context`.
+- **CAG recommendation** — `extras.cag_candidate` flagged for small + static corpora (see docs/retrieval.md).
+- Docs: `docs/retrieval.md`, `docs/code-graph.md`.
+
+### Fixed
+- `privacy=hybrid_api` is now honored — weak tiers (cpu/apple-low) recommend a cloud LLM instead of a too-weak local one.
+- `chunk_strategy`/`chunk_size` are now derived from answers (was hardcoded `recursive`/512).
+- `RAG.from_config` expands `${VAR:-default}` env vars, so `perfectrag.yml` works inside containers (fixes Dockerized-app store URL parse error).
+- Template `ollama-pull` no longer tries to pull a cloud model name when `privacy=hybrid_api` selects a cloud runtime.
+
+### Changed
+- `code_rag` use-case routes to `code-graph-rag` (was `ragflow-stack`).
+
 ## 1.1.0
 
 ### Added
