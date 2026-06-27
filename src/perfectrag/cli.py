@@ -77,6 +77,14 @@ def init(
             raise typer.Exit(1)
         recipe.template = template
         recipe.notes.append(f"Template được override bằng --template={template}")
+    elif answers_file is None:
+        # Interactive cold-start: show the scored comparison + let the user re-choose.
+        _show_ranking(answers, hw)
+        if not dry_run:
+            chosen = _choose_template_interactive(recipe.template)
+            if chosen and chosen != recipe.template:
+                recipe.template = chosen
+                recipe.notes.append(f"Bạn chọn lại template: {chosen}")
 
     # Optional Gemini refinement
     if advise_flag:
@@ -705,6 +713,28 @@ def _eval_retrieval(project_dir: Path, dataset: Path, k: int, gate: bool) -> Non
         else:
             console.print(f"[red]Quality gate FAILED: {', '.join(failures)}[/red]")
             raise typer.Exit(1)
+
+
+def _template_choices(default: str) -> list[tuple[str, str]]:
+    """(value, label) pairs for the init template picker — recommended first."""
+    from perfectrag.scaffolder import available_templates
+
+    avail = available_templates()
+    out = [(default, f"✓ Nhận gợi ý: {default} — {avail.get(default, '')}")]
+    out += [(name, f"{name} — {desc}") for name, desc in avail.items() if name != default]
+    return out
+
+
+def _choose_template_interactive(default: str) -> str | None:
+    """Ask the user to confirm the recommended template or pick another. Enter = accept."""
+    from InquirerPy import inquirer
+    from InquirerPy.base.control import Choice
+
+    choices = [Choice(value, name=label) for value, label in _template_choices(default)]
+    return inquirer.select(
+        message="Chọn backbone (Enter = nhận gợi ý, ↑↓ để xem lựa chọn khác):",
+        choices=choices, default=default,
+    ).execute()
 
 
 def _show_ranking(answers: recipes.Answers, hw: hardware.HardwareProfile) -> None:

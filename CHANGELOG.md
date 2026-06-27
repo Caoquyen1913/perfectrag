@@ -16,6 +16,7 @@
 - **Retrieval-quality metrics + CI gate**: `perfectrag.core.evaluation` (recall@k / MRR / nDCG) and `perfectrag eval --retrieval [--k N --gate]` — measures retrieval separately from generation, no Docker.
 - **Auto-tune** (`perfectrag tune --docs ... --golden ... --apply`) — ingests your corpus under each retrieval technique, scores them on your golden questions, and writes the empirically best config. "Measure, don't guess" instead of trusting rule-based defaults.
 - **Scored advisor**: `recipes.score_candidates()` ranks all templates with reasons; `perfectrag advise` shows an evaluative table, not just one pick.
+- **Interactive backbone picker at `init`**: in interactive mode, `init` shows the scored template ranking and lets you confirm the recommendation or pick another (Enter = accept). Rule-based, no API key needed. CI/`--answers-file`/`--template` paths unchanged.
 - **6 new wizard questions** driving the recipe: `latency`, `priority`, `language`, `freshness`, `existing_infra`, `needs_citations` (e.g. multilingual→bge-m3, postgres infra→pgvector, interactive→drop reranker).
 - **3 code-intelligence MCP servers**: `serena`, `ast-grep`, `claude-context`.
 - **CAG recommendation** — `extras.cag_candidate` flagged for small + static corpora (see docs/retrieval.md).
