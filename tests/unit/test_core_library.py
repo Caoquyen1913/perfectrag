@@ -84,6 +84,22 @@ def test_ingest_file(tmp_path):
     assert "ANSWER" in result.answer
 
 
+def test_expand_env_in_config(monkeypatch):
+    from perfectrag.core.rag import _expand_env
+    monkeypatch.setenv("QDRANT_URL", "http://qdrant:6333")
+    cfg = {"store": {"url": "${QDRANT_URL:-http://localhost:6333}"},
+           "x": ["${MISSING:-fallback}", "literal"]}
+    out = _expand_env(cfg)
+    assert out["store"]["url"] == "http://qdrant:6333"   # env wins
+    assert out["x"] == ["fallback", "literal"]           # default + literal
+
+
+def test_expand_env_default_when_unset(monkeypatch):
+    from perfectrag.core.rag import _expand_env
+    monkeypatch.delenv("QDRANT_URL", raising=False)
+    assert _expand_env("${QDRANT_URL:-http://localhost:6333}") == "http://localhost:6333"
+
+
 def test_contextual_retrieval_prepends_context():
     """contextual=True runs each chunk through the LLM and embeds context+chunk."""
     captured: dict = {}

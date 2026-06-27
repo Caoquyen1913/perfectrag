@@ -34,6 +34,8 @@ Config schema (perfectrag.yml):
 
 from __future__ import annotations
 
+import os
+import re
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -59,6 +61,23 @@ class QueryResult:
                 for h in self.hits
             ],
         }
+
+
+_ENV_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
+
+
+def _expand_env(value):
+    """Recursively expand ${VAR} and ${VAR:-default} in a loaded config using os.environ.
+
+    perfectrag.yml mirrors docker-compose env syntax so the same file works in a
+    container (where QDRANT_URL etc. are set) and locally (where the default wins)."""
+    if isinstance(value, str):
+        return _ENV_RE.sub(lambda m: os.environ.get(m.group(1)) or (m.group(2) or ""), value)
+    if isinstance(value, dict):
+        return {k: _expand_env(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env(v) for v in value]
+    return value
 
 
 def _chunk_text(text: str, size: int = 512) -> list[str]:
@@ -117,7 +136,7 @@ class RAG:
     @classmethod
     def from_config(cls, path: str | Path) -> RAG:
         cfg = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
-        return cls.from_dict(cfg)
+        return cls.from_dict(_expand_env(cfg))
 
     @classmethod
     def from_dict(cls, cfg: dict) -> RAG:
