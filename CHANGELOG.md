@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0
+
+Theme: **help users pick the right config — measure, don't guess.**
+
+### Added
+- **Auto-tune** (`perfectrag tune --docs ... --golden ... --apply`) — ingests your corpus under each retrieval technique (baseline / parent-doc / contextual / query-expansion / CRAG), scores them on your golden questions (recall@k / MRR / nDCG), and writes the empirically best config (cheapest on ties). One embedder/LLM is reused across trials for stability. Beats rule-based defaults because it measures on *your* data.
+- **Interactive backbone picker at `init`** — in interactive mode, `init` shows the scored template ranking with reasons and lets you confirm the recommendation or pick another backbone (Enter = accept). Rule-based, **no API key needed**; CI / `--answers-file` / `--template` paths unchanged.
+- docs/retrieval.md: "Auto-tune" section.
+
 ## 1.2.0
 
 ### Added
@@ -14,9 +23,7 @@
   - **Corrective RAG / CRAG** (`corrective: true`) — grade results, re-retrieve once if irrelevant.
   - The wizard auto-enables these based on answers (e.g. `priority: accuracy` / `multi_hop` → expansion + CRAG).
 - **Retrieval-quality metrics + CI gate**: `perfectrag.core.evaluation` (recall@k / MRR / nDCG) and `perfectrag eval --retrieval [--k N --gate]` — measures retrieval separately from generation, no Docker.
-- **Auto-tune** (`perfectrag tune --docs ... --golden ... --apply`) — ingests your corpus under each retrieval technique, scores them on your golden questions, and writes the empirically best config. "Measure, don't guess" instead of trusting rule-based defaults.
 - **Scored advisor**: `recipes.score_candidates()` ranks all templates with reasons; `perfectrag advise` shows an evaluative table, not just one pick.
-- **Interactive backbone picker at `init`**: in interactive mode, `init` shows the scored template ranking and lets you confirm the recommendation or pick another (Enter = accept). Rule-based, no API key needed. CI/`--answers-file`/`--template` paths unchanged.
 - **6 new wizard questions** driving the recipe: `latency`, `priority`, `language`, `freshness`, `existing_infra`, `needs_citations` (e.g. multilingual→bge-m3, postgres infra→pgvector, interactive→drop reranker).
 - **3 code-intelligence MCP servers**: `serena`, `ast-grep`, `claude-context`.
 - **CAG recommendation** — `extras.cag_candidate` flagged for small + static corpora (see docs/retrieval.md).
