@@ -519,6 +519,72 @@ def eval(
 
 
 @app.command()
+def tune(
+    docs: Path = typer.Option(..., "--docs", help="Corpus dir/file to ingest for tuning"),
+    golden: Path = typer.Option(..., "--golden", "-g",
+                                help='JSONL: {"question": "...", "relevant": ["doc.md"]}'),
+    config: Path = typer.Option(Path("perfectrag.yml"), "--config", "-c"),
+    k: int = typer.Option(5, "--k", help="top-k for metrics"),
+    apply: bool = typer.Option(False, "--apply", help="Write the winning flags into the config"),
+) -> None:
+    """Measure retrieval techniques on YOUR corpus + golden questions, pick the best.
+
+    "Measure, don't guess" — beats the wizard's rule-based defaults because it scores
+    each technique on your actual data instead of assuming."""
+    import json
+
+    import yaml
+
+    from perfectrag import tune as _tune
+
+    if not config.exists():
+        console.print(f"[red]No config at {config}[/red]")
+        raise typer.Exit(1)
+    if not docs.exists():
+        console.print(f"[red]Docs not found: {docs}[/red]")
+        raise typer.Exit(1)
+    if not golden.exists():
+        console.print(f"[red]Golden set not found: {golden}[/red]")
+        console.print('[dim]JSONL lines: {"question": "...", "relevant": ["doc.md"]}[/dim]')
+        raise typer.Exit(1)
+
+    cfg = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
+    data = [json.loads(line) for line in golden.read_text(encoding="utf-8").splitlines() if line.strip()]
+    console.print(f"[cyan]Tuning on {docs} with {len(data)} golden queries "
+                  f"(reusing one embedder/LLM across configs)...[/cyan]")
+    results = _tune.tune_from_config(cfg, docs, data, k=k)
+    if not results:
+        console.print("[red]No trials ran (check corpus/golden set).[/red]")
+        raise typer.Exit(1)
+
+    table = Table(title=f"Tune results — best first (k={k})")
+    table.add_column("", style="dim")
+    table.add_column("Config", style="cyan")
+    table.add_column(f"recall@{k}")
+    table.add_column("MRR")
+    table.add_column(f"nDCG@{k}")
+    table.add_column("LLM cost")
+    cost_label = {0: "free", 1: "/query", 2: "/chunk"}
+    for i, r in enumerate(results):
+        m = r.metrics
+        name = f"[bold green]{r.name}[/bold green] ✓" if i == 0 else r.name
+        table.add_row(str(i + 1), name, f"{m.recall_at_k:.3f}", f"{m.mrr:.3f}",
+                      f"{m.ndcg_at_k:.3f}", cost_label[r.cost])
+    console.print(table)
+
+    winner = results[0]
+    flags = winner.config_flags or {}
+    console.print(f"[green]Winner: {winner.name}[/green] → "
+                  f"{flags if flags else 'baseline (no extra technique)'}")
+    if apply:
+        config.write_text(_tune.apply_flags(config.read_text(encoding="utf-8"), flags),
+                          encoding="utf-8")
+        console.print(f"[green]Applied to {config}.[/green]")
+    else:
+        console.print("[dim]Re-run with --apply to write these flags into the config.[/dim]")
+
+
+@app.command()
 def doctor(
     project_dir: Path = typer.Option(Path("."), "--project", "-p"),
 ) -> None:

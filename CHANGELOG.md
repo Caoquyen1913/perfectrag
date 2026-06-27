@@ -14,6 +14,7 @@
   - **Corrective RAG / CRAG** (`corrective: true`) — grade results, re-retrieve once if irrelevant.
   - The wizard auto-enables these based on answers (e.g. `priority: accuracy` / `multi_hop` → expansion + CRAG).
 - **Retrieval-quality metrics + CI gate**: `perfectrag.core.evaluation` (recall@k / MRR / nDCG) and `perfectrag eval --retrieval [--k N --gate]` — measures retrieval separately from generation, no Docker.
+- **Auto-tune** (`perfectrag tune --docs ... --golden ... --apply`) — ingests your corpus under each retrieval technique, scores them on your golden questions, and writes the empirically best config. "Measure, don't guess" instead of trusting rule-based defaults.
 - **Scored advisor**: `recipes.score_candidates()` ranks all templates with reasons; `perfectrag advise` shows an evaluative table, not just one pick.
 - **6 new wizard questions** driving the recipe: `latency`, `priority`, `language`, `freshness`, `existing_infra`, `needs_citations` (e.g. multilingual→bge-m3, postgres infra→pgvector, interactive→drop reranker).
 - **3 code-intelligence MCP servers**: `serena`, `ast-grep`, `claude-context`.

@@ -64,6 +64,7 @@ That gives you a RAG service, eval dashboard, observability gateway, and multi-a
 | `perfectrag up / down / logs / doctor` | Orchestrate the generated project |
 | `perfectrag eval --dataset qa.jsonl` | Generation metrics — RAGAS + DeepEval (needs `eval` addon) |
 | `perfectrag eval --retrieval -d golden.jsonl --gate` | Retrieval metrics (recall@k/MRR/nDCG) + CI gate, no Docker |
+| `perfectrag tune --docs ./docs --golden g.jsonl --apply` | Auto-pick the best retrieval technique **on your data** |
 | `perfectrag advise "..."` | Scored, evaluative recipe recommendation |
 | `perfectrag deploy helm/flyio/railway` | Render production deploy assets |
 | `perfectrag web` | Start FastAPI backend for Next.js UI |
@@ -96,7 +97,14 @@ turns them on automatically based on your answers):
 | Query expansion + RRF | `query_expansion: 3` | terse / multi-hop queries |
 | Corrective RAG (CRAG) | `corrective: true` | re-retrieve when results look off |
 
-Measure them: `perfectrag eval --retrieval -d golden.jsonl --gate`. See [docs/retrieval.md](docs/retrieval.md).
+Don't guess which to enable — **measure on your own data**:
+
+```bash
+perfectrag tune --docs ./docs --golden ./golden.jsonl --apply   # picks + writes the best config
+perfectrag eval --retrieval -d golden.jsonl --gate              # CI gate on retrieval quality
+```
+
+See [docs/retrieval.md](docs/retrieval.md).
 
 ## Addons (v1.0)
 

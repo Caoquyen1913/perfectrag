@@ -79,6 +79,38 @@ A practical setup is a **router**: CAG hot-path for the stable core, RAG cold-pa
 for everything else. perfectRAG recommends CAG (doesn't force it) — a long-context
 model + a system prompt holding the corpus is often all you need for tiny corpora.
 
+## Auto-tune — measure, don't guess
+
+The wizard picks retrieval techniques from rule-based defaults — but the *only* way
+to know what works on **your** data is to measure it. `perfectrag tune` ingests your
+corpus under each technique, scores them against your golden questions, and picks
+the empirical winner (highest recall@k / MRR / nDCG, cheapest on ties):
+
+```bash
+perfectrag tune --docs ./docs --golden ./golden.jsonl --apply
+```
+
+```
+ Tune results — best first (k=3)
+ #  Config            recall@3  MRR    nDCG@3  LLM cost
+ 1  baseline ✓        1.000     1.000  1.000   free
+ 2  parent-doc        1.000     1.000  1.000   free
+ 3  query-expansion   1.000     1.000  1.000   /query
+ 4  contextual        1.000     0.875  0.908   /chunk
+ 5  crag              1.000     0.833  0.875   /query
+ Winner: baseline → baseline (no extra technique)
+```
+
+Notes:
+- The base `perfectrag.yml` provides the store/embedding/LLM; tune only varies the
+  retrieval technique (one embedder/LLM is reused across trials, so it's stable).
+- `--apply` writes the winning flags into the config (and removes any it didn't pick).
+- If no LLM is configured, the LLM-based trials (contextual/query-expansion/CRAG) are
+  skipped and baseline/parent-doc still run.
+- The example above is a real run: on an easy corpus the LLM techniques *lowered*
+  ranking quality (a weak 0.5B model wrote noisy context), so tune correctly chose
+  baseline — something rule-based defaults would have gotten wrong.
+
 ## Evaluating retrieval
 
 Measure retrieval quality separately from generation with a golden set:

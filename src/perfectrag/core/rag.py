@@ -40,6 +40,7 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -66,7 +67,7 @@ class QueryResult:
 _ENV_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
 
 
-def _expand_env(value):
+def _expand_env(value: Any) -> Any:
     """Recursively expand ${VAR} and ${VAR:-default} in a loaded config using os.environ.
 
     perfectrag.yml mirrors docker-compose env syntax so the same file works in a
