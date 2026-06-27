@@ -10,8 +10,8 @@
 
 - [x] **`privacy=hybrid_api` đang bị bỏ qua** → đã fix: `recommend()` đọc privacy; tier yếu (cpu/apple-low) + hybrid_api → cloud LLM (`gemini-2.0-flash`). Mở rộng `Recipe.llm_runtime` Literal + guard `ollama pull` ở 4 compose (không pull model cloud) + placeholder `*_API_KEY` trong `.env` (custom-naive-rag).
 - [x] **`chunk_strategy` luôn hardcode `recursive`/512** → đã fix: helper `_pick_chunking(answers)` (recursive/512 mặc định; code modality → recursive/768; KHÔNG default semantic).
-- [ ] **`code_rag` không làm gì đặc biệt** — route thẳng `ragflow-stack` naive chunk. → route sang track Code Graph (Track A).
-- [ ] **Khuyến nghị là 1 pick cứng, không điểm số** — `recommend()` trả 1 `Recipe`. → biến thành scored advisor (Track C).
+- [x] **`code_rag` không làm gì đặc biệt** → đã route sang `code-graph-rag` (Track A, commit 1a308e3).
+- [x] **Khuyến nghị là 1 pick cứng** → đã có scored advisor `score_candidates` (Track C.2, commit 2fed475).
 - [x] Thêm unit test cho privacy + chunking trong `tests/unit/test_recipes.py` (6 test mới, tổng 101 pass).
 - [ ] **Follow-up**: cloud LLM hiện chỉ wire vào app dùng perfectrag core (custom-naive-rag). Wiring cloud LLM vào upstream backbone (RAGFlow/Dify/LightRAG) cần config riêng của từng backbone — để Track D / sau.
 
