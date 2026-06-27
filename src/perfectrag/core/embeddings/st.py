@@ -10,7 +10,10 @@ class STEmbedder:
         except ImportError:
             raise RuntimeError("sentence-transformers not installed. `pip install 'perfectrag[embed-torch]'`")
         self._model = SentenceTransformer(model, device=device, trust_remote_code=True)
-        self._dim = self._model.get_sentence_embedding_dimension() or 0
+        # `get_embedding_dimension` is the current name; fall back for older versions.
+        get_dim = getattr(self._model, "get_embedding_dimension", None) \
+            or self._model.get_sentence_embedding_dimension
+        self._dim = get_dim() or 0
 
     @property
     def dim(self) -> int:

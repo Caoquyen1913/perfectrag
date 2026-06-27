@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import sys
+import warnings
+
+# Quiet noisy third-party warnings in the CLI (huggingface_hub symlink notices on
+# Windows, emitted while downloading models). Our own code is warning-free.
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("HF_HUB_VERBOSITY", "error")  # hide the "set HF_TOKEN" notice
+warnings.filterwarnings("ignore", message=r".*local_dir_use_symlinks.*")
 from pathlib import Path
 
 import typer
