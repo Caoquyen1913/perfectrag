@@ -6,6 +6,30 @@
     print(rag.query("What is RAG?"))
 """
 
+from perfectrag.core.extensions import (
+    REGISTRY,
+    Context,
+    Document,
+    Extension,
+    inject,
+    load_extensions,
+    retrieve,
+    skill,
+    tool,
+    transform,
+)
 from perfectrag.core.rag import RAG
 
-__all__ = ["RAG"]
+__all__ = [
+    "RAG",
+    "REGISTRY",
+    "Context",
+    "Document",
+    "Extension",
+    "inject",
+    "load_extensions",
+    "retrieve",
+    "skill",
+    "tool",
+    "transform",
+]

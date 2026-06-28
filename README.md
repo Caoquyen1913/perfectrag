@@ -111,6 +111,39 @@ perfectrag eval --retrieval -d golden.jsonl --gate              # recall@k / MRR
 
 See [docs/retrieval.md](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/retrieval.md).
 
+## 🧩 Extend it with decorators
+
+perfectRAG is a **framework, not a black box**. Plug in your own data sources,
+retrieval logic, post-processing, tools, and skills with one decorator — no subclassing:
+
+```python
+from perfectrag import RAG, inject, transform, tool, Document
+
+@inject("notion")                     # a custom data source
+def notion(database_id: str):
+    for page in notion_client.query(database_id):
+        yield Document(text=page.text, source=f"notion:{page.id}")
+
+@transform("boost_recent")            # a post-retrieval hook (rerank/filter/expand)
+def boost_recent(ctx, query, hits):
+    return sorted(hits, key=lambda h: h.chunk.metadata.get("date", 0), reverse=True)
+
+@tool                                 # a callable tool (schema inferred from type hints)
+def calculator(expression: str) -> str:
+    "Evaluate a basic arithmetic expression."
+    return str(eval(expression, {"__builtins__": {}}, {}))
+
+rag = RAG.from_config("perfectrag.yml")      # extensions/retriever/transforms in the yaml
+rag.ingest_from("notion", database_id="…")   # uses @inject
+rag.call_tool("calculator", expression="2+2")
+rag.tool_schemas()                           # OpenAI/Anthropic/MCP-ready function schemas
+```
+
+Five decorators — `@inject`, `@retrieve`, `@transform`, `@tool`, `@skill` — wired in via
+config (`extensions: [./my_ext.py]`), constructor, or a pip entry point. See
+[docs/extensions.md](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/extensions.md)
+and [examples/my_extensions.py](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/examples/my_extensions.py).
+
 ## 🛠️ Commands
 
 | Command | What it does |
@@ -167,7 +200,7 @@ Also renders `flyio` and `railway` assets. See [docs/deploy.md](https://github.c
 
 ## 📚 Docs
 
-[Retrieval](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/retrieval.md) · [Code intelligence](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/code-graph.md) · [Templates](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/templates.md) · [Addons](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/addons.md) · [Eval](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/eval.md) · [Observability](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/observability.md) · [Deploy](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/deploy.md) · [Browser UI](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/ui.md) · [MCP registry](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/mcp.md) · [Skills](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/skills.md) · [Stack-boot test findings](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/stack-testing-findings.md) · [Changelog](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/CHANGELOG.md)
+[Retrieval](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/retrieval.md) · [Extensions](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/extensions.md) · [Code intelligence](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/code-graph.md) · [Templates](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/templates.md) · [Addons](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/addons.md) · [Eval](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/eval.md) · [Observability](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/observability.md) · [Deploy](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/deploy.md) · [Browser UI](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/ui.md) · [MCP registry](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/mcp.md) · [Skills](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/skills.md) · [Stack-boot test findings](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/stack-testing-findings.md) · [Changelog](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/CHANGELOG.md)
 
 ## 📄 License
 

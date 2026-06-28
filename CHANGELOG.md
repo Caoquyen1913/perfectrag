@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Decorator-based extension framework** — turn perfectRAG into a pluggable framework
+  with five decorators and no subclassing:
+  - `@inject` — custom data sources (`rag.ingest_from("name", **kwargs)`).
+  - `@retrieve` — a full custom retriever that replaces the built-in.
+  - `@transform` — post-retrieval hooks (rerank / filter / expand), applied in order.
+  - `@tool` — LLM/agent-callable tools; JSON schema inferred from type hints
+    (`rag.tool_schemas()`, `rag.call_tool(...)`), MCP/OpenAI-ready.
+  - `@skill` — higher-level reusable capabilities (`rag.run_skill(...)`).
+  - Optional `ctx` first param gives a `Context` (rag/store/embedder/llm). Wire in via
+    `perfectrag.yml` (`extensions: [./my_ext.py]`, `retriever:`, `transforms:`), the
+    `RAG(...)` constructor, or a `perfectrag.extensions` entry point.
+  - New top-level exports: `inject, retrieve, transform, tool, skill, Document, Context`.
+  - Docs: `docs/extensions.md` + runnable `examples/my_extensions.py`.
+
 ## 1.3.3
 
 ### Docs

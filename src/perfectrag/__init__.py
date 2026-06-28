@@ -2,7 +2,33 @@
 
 __version__ = "1.3.3"
 
-# Top-level export for library mode: `from perfectrag import RAG`
-from perfectrag.core import RAG
+# Top-level exports for library mode:
+#   from perfectrag import RAG, inject, retrieve, transform, tool, skill, Document
+from perfectrag.core import (
+    RAG,
+    REGISTRY,
+    Context,
+    Document,
+    Extension,
+    inject,
+    load_extensions,
+    retrieve,
+    skill,
+    tool,
+    transform,
+)
 
-__all__ = ["RAG", "__version__"]
+__all__ = [
+    "RAG",
+    "REGISTRY",
+    "Context",
+    "Document",
+    "Extension",
+    "__version__",
+    "inject",
+    "load_extensions",
+    "retrieve",
+    "skill",
+    "tool",
+    "transform",
+]

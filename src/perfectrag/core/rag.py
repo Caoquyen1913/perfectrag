@@ -45,6 +45,7 @@ from typing import Any
 import yaml
 
 from perfectrag.core import embeddings, llms, parsers, rerankers, stores
+from perfectrag.core import extensions as ext
 from perfectrag.core.protocols import Chunk, Hit
 
 
@@ -110,7 +111,14 @@ class RAG:
         query_expansion: int = 0,
         parent_chunk_size: int = 0,
         corrective: bool = False,
+        extensions: list[str] | None = None,
+        retriever: str | None = None,
+        transforms: list[str] | None = None,
     ):
+        # Load user extension modules first so their @inject/@retrieve/@transform/
+        # @tool/@skill decorators are registered before we reference them by name.
+        for src in extensions or []:
+            ext.load_extensions(src)
         self.store = store
         self.embedder = embedder
         self.reranker = reranker
@@ -119,6 +127,10 @@ class RAG:
         self.collection = collection
         self.chunk_size = chunk_size
         self.top_k = top_k
+        # Name of a registered @retrieve to use instead of the built-in retriever.
+        self.retriever = retriever
+        # Names of registered @transform hooks applied (in order) after retrieval.
+        self.transforms = list(transforms or [])
         # Contextual Retrieval (Anthropic): prepend an LLM-generated situating
         # sentence to each chunk before embedding. Cuts retrieval failures a lot
         # at the cost of one cheap LLM call per chunk at ingest time.
@@ -171,6 +183,9 @@ class RAG:
             query_expansion=int(cfg.get("query_expansion", 0)),
             parent_chunk_size=int(cfg.get("parent_chunk_size", 0)),
             corrective=bool(cfg.get("corrective", False)),
+            extensions=cfg.get("extensions") or [],
+            retriever=cfg.get("retriever"),
+            transforms=cfg.get("transforms") or [],
         )
 
     # --- ingestion ---
@@ -193,7 +208,30 @@ class RAG:
     def ingest_text(self, text: str, source: str = "inline") -> int:
         return self._index(text, source=source)
 
-    def _index(self, text: str, *, source: str) -> int:
+    def ingest_from(self, source: str, **kwargs) -> int:
+        """Ingest via a registered ``@inject`` data source. Returns chunk count.
+
+        The inject function may yield ``Document``/str/dict/(text, source) items::
+
+            @inject("notion")
+            def notion(database_id: str):
+                yield Document(text=..., source=..., metadata={...})
+
+            rag.ingest_from("notion", database_id="abc")
+        """
+        ext_obj = ext.REGISTRY.get(ext.INJECT, source)
+        if ext_obj is None:
+            raise KeyError(
+                f"No @inject source named {source!r}. "
+                f"Registered: {ext.REGISTRY.names(ext.INJECT) or '[]'}"
+            )
+        result = self._call(ext_obj, **kwargs)
+        total = 0
+        for doc in ext.iter_docs(result, default_source=source):
+            total += self._index(doc.text, source=doc.source, extra_meta=doc.metadata)
+        return total
+
+    def _index(self, text: str, *, source: str, extra_meta: dict[str, Any] | None = None) -> int:
         """Chunk → (optionally) contextualize → embed → upsert. Returns chunk count."""
         if self.parent_chunk_size and self.parent_chunk_size > self.chunk_size:
             pairs = _parent_child_chunks(text, self.parent_chunk_size, self.chunk_size)
@@ -203,7 +241,7 @@ class RAG:
             return 0
         chunks = []
         for i, (child, parent) in enumerate(pairs):
-            meta: dict[str, object] = {"chunk_index": i}
+            meta: dict[str, object] = {"chunk_index": i, **(extra_meta or {})}
             if parent:
                 meta["parent_text"] = parent
             chunks.append(Chunk(id=str(uuid.uuid4()), text=child, source=source, metadata=meta))
@@ -236,7 +274,61 @@ class RAG:
 
     # --- query ---
 
+    # --- extension plumbing ---
+
+    def _ctx(self) -> ext.Context:
+        return ext.Context(rag=self, config=getattr(self, "_config", {}))
+
+    def _call(self, ext_obj: ext.Extension, *args: Any, **kwargs: Any) -> Any:
+        """Invoke an extension, passing a Context first if it asked for `ctx`."""
+        if ext_obj.wants_ctx:
+            return ext_obj.fn(self._ctx(), *args, **kwargs)
+        return ext_obj.fn(*args, **kwargs)
+
     def retrieve(self, question: str, k: int | None = None) -> list[Hit]:
+        """Retrieve hits: a registered ``@retrieve`` if set, else the built-in
+        pipeline — then run every registered ``@transform`` hook in order."""
+        k = k or self.top_k
+        if self.retriever:
+            r = ext.REGISTRY.get(ext.RETRIEVE, self.retriever)
+            hits = list(self._call(r, question, k)) if r else self._default_retrieve(question, k)
+        else:
+            hits = self._default_retrieve(question, k)
+        for name in self.transforms:
+            t = ext.REGISTRY.get(ext.TRANSFORM, name)
+            if t is not None:
+                hits = list(self._call(t, question, hits))
+        return hits
+
+    # --- tools & skills (callable extensions) ---
+
+    def tool_names(self) -> list[str]:
+        return ext.REGISTRY.names(ext.TOOL)
+
+    def tool_schemas(self) -> list[dict]:
+        """OpenAI/Anthropic-style function schemas for every registered ``@tool``."""
+        return [e.schema() for e in ext.REGISTRY.all(ext.TOOL)]
+
+    def call_tool(self, name: str, **kwargs: Any) -> Any:
+        e = ext.REGISTRY.get(ext.TOOL, name)
+        if e is None:
+            raise KeyError(f"No @tool named {name!r}. Registered: {self.tool_names() or '[]'}")
+        return self._call(e, **kwargs)
+
+    def skill_names(self) -> list[str]:
+        return ext.REGISTRY.names(ext.SKILL)
+
+    def run_skill(self, name: str, **kwargs: Any) -> Any:
+        e = ext.REGISTRY.get(ext.SKILL, name)
+        if e is None:
+            raise KeyError(f"No @skill named {name!r}. Registered: {self.skill_names() or '[]'}")
+        return self._call(e, **kwargs)
+
+    def extensions(self) -> dict[str, list[str]]:
+        """Everything currently registered, grouped by kind."""
+        return ext.REGISTRY.summary()
+
+    def _default_retrieve(self, question: str, k: int | None = None) -> list[Hit]:
         k = k or self.top_k
         retrieval_k = k * 3 if self.reranker else k
         if self.query_expansion and self.llm is not None:
