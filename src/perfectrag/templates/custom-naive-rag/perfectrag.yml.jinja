@@ -57,3 +57,14 @@ llm:
 
 parser:
   name: {{ recipe.doc_parser }}
+
+# --- Extensions (optional) -------------------------------------------------
+# Plug in your own @inject sources, @retrieve / @transform hooks, @tool, @skill.
+# Drop a file like extensions.py next to this config, then:
+#
+#   extensions: [./extensions.py]     # files/modules to import (decorators run)
+#   retriever: my_hybrid              # a registered @retrieve (replaces default)
+#   transforms: [dedupe, boost_recent]  # registered @transform, applied in order
+#
+# Use them in code: rag.ingest_from("source", ...), rag.call_tool(...), rag.agent(...).
+# See https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/extensions.md

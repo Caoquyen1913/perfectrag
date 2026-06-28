@@ -16,6 +16,17 @@
     `RAG(...)` constructor, or a `perfectrag.extensions` entry point.
   - New top-level exports: `inject, retrieve, transform, tool, skill, Document, Context`.
   - Docs: `docs/extensions.md` + runnable `examples/my_extensions.py`.
+- **Agentic tool-calling** — `rag.agent(question)` runs a dependency-free ReAct loop over
+  registered `@tool`s + a built-in `search_kb`; returns an `AgentResult` (answer + step
+  trace). Works with any LLM backend (no function-calling API required).
+- **CLI `perfectrag list extensions --from ./ext.py`** — load + inspect registered
+  extensions (kind / name / description / params).
+- **CLI `perfectrag export-tools --from ./ext.py --project .`** — generate a FastMCP
+  server exposing your `@tool`s and register it as `perfectrag-tools` in `mcp.yaml`
+  (so agentic backbones / Claude Code / Cursor can call them). `ctx`-tools are bound to a
+  RAG built from `perfectrag.yml`.
+- Generated `perfectrag.yml` now documents an `extensions:` / `retriever:` / `transforms:`
+  block (auto-loaded by `RAG.from_config`).
 
 ## 1.3.3
 

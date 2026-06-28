@@ -118,6 +118,46 @@ def tldr(ctx, text: str) -> str:
 rag.run_skill("tldr", text=long_doc)
 ```
 
+## Agentic tool-calling — `rag.agent(...)`
+
+Let the LLM decide which tools to call to answer a question. `rag.agent()` runs a
+lenient ReAct loop over your registered `@tool`s plus a built-in `search_kb`
+(knowledge-base retrieval). Works with any LLM backend — no function-calling API needed.
+
+```python
+@tool
+def multiply(a: int, b: int) -> int:
+    "Multiply two integers."
+    return a * b
+
+result = rag.agent("What's 12 × 9, and what do the docs say about CRAG?")
+print(result.answer)
+for step in result.steps:          # full trace
+    print(step.action, step.action_input, "->", step.observation[:60])
+```
+
+- `max_steps` (default 5) caps the loop; `tools=[...]` limits which tools are exposed;
+  `include_search=False` drops the built-in KB search.
+- If the model just answers (no tool call), that text is the answer — it never gets stuck.
+- Tool errors are captured into the observation, never raised.
+
+## Export your tools to MCP
+
+Turn your `@tool`s into a real MCP server so a generated project's agentic backbone,
+Claude Code, or Cursor can call them:
+
+```bash
+perfectrag export-tools --from ./extensions.py --project .
+```
+
+This writes `perfectrag_tools_server.py` (a tiny [FastMCP](https://gofastmcp.com) server)
+and adds a `perfectrag-tools` entry to the project's `mcp.yaml`. Pure tools run
+standalone; `ctx`-tools are served against a RAG built from `perfectrag.yml`. Run it with:
+
+```bash
+pip install fastmcp && python perfectrag_tools_server.py
+```
+
 ## Wiring extensions in
 
 **1. Programmatically** — just import the module that defines them, then name them:

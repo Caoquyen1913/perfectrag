@@ -6,6 +6,7 @@
     print(rag.query("What is RAG?"))
 """
 
+from perfectrag.core.agent import AgentResult, AgentStep
 from perfectrag.core.extensions import (
     REGISTRY,
     Context,
@@ -23,6 +24,8 @@ from perfectrag.core.rag import RAG
 __all__ = [
     "RAG",
     "REGISTRY",
+    "AgentResult",
+    "AgentStep",
     "Context",
     "Document",
     "Extension",

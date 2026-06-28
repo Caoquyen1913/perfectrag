@@ -135,12 +135,14 @@ def calculator(expression: str) -> str:
 
 rag = RAG.from_config("perfectrag.yml")      # extensions/retriever/transforms in the yaml
 rag.ingest_from("notion", database_id="…")   # uses @inject
-rag.call_tool("calculator", expression="2+2")
+rag.agent("What's 12×9, and what do the docs say about CRAG?")  # ReAct loop over your @tool(s)
 rag.tool_schemas()                           # OpenAI/Anthropic/MCP-ready function schemas
 ```
 
 Five decorators — `@inject`, `@retrieve`, `@transform`, `@tool`, `@skill` — wired in via
-config (`extensions: [./my_ext.py]`), constructor, or a pip entry point. See
+config (`extensions: [./my_ext.py]`), constructor, or a pip entry point. Plus
+`rag.agent(...)` for ReAct tool-calling, and **`perfectrag export-tools`** to expose your
+tools as an MCP server. See
 [docs/extensions.md](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/extensions.md)
 and [examples/my_extensions.py](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/examples/my_extensions.py).
 
@@ -159,7 +161,9 @@ and [examples/my_extensions.py](https://github.com/Caoquyen1913/perfectrag/blob/
 | `perfectrag advise "..."` | Scored, evaluative recipe recommendation |
 | `perfectrag deploy helm/flyio/railway` | Render production deploy assets |
 | `perfectrag web` | Start the FastAPI backend for the Next.js UI |
-| `perfectrag list templates/mcp/skills/addons/installed` | Show catalogues |
+| `perfectrag list templates/mcp/skills/addons/extensions/installed` | Show catalogues |
+| `perfectrag list extensions --from ./ext.py` | Inspect your registered `@inject`/`@tool`/… |
+| `perfectrag export-tools --from ./ext.py` | Expose your `@tool`s as an MCP server (→ `mcp.yaml`) |
 | `perfectrag hw` | Show detected hardware + tier |
 
 ## 🔌 Addons

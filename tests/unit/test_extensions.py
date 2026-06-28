@@ -244,6 +244,77 @@ def test_extensions_loaded_via_constructor(tmp_path):
 
 
 # ----------------------------------------------------------------- normalization
+# ----------------------------------------------------------------- agent loop
+class ScriptLLM:
+    """Emits a scripted sequence of generate() outputs."""
+    def __init__(self, *outputs):
+        self.outputs = list(outputs)
+        self.i = 0
+
+    def generate(self, prompt, **kw):
+        out = self.outputs[min(self.i, len(self.outputs) - 1)]
+        self.i += 1
+        return out
+
+    def stream(self, prompt, **kw):
+        yield ""
+
+
+def test_agent_calls_tool_then_finishes():
+    @tool
+    def double(n: int) -> int:
+        "Double a number."
+        return n * 2
+
+    llm = ScriptLLM(
+        'THOUGHT: double it.\nACTION: double\nACTION_INPUT: {"n": 21}',
+        "FINAL: The answer is 42.",
+    )
+    rag = RAG(store=FakeStore(), embedder=FakeEmbedder(), llm=llm, top_k=3)
+    res = rag.agent("double 21", include_search=False)
+    assert res.answer == "The answer is 42."
+    assert len(res.steps) == 1
+    assert res.steps[0].action == "double"
+    assert res.steps[0].observation == "42"
+
+
+def test_agent_uses_builtin_search_kb():
+    llm = ScriptLLM(
+        'ACTION: search_kb\nACTION_INPUT: {"query": "alpha"}',
+        "FINAL: done",
+    )
+    rag = RAG(store=FakeStore(), embedder=FakeEmbedder(), llm=llm, chunk_size=4, top_k=2)
+    rag.ingest_text("alpha beta gamma delta epsilon zeta", source="x")
+    res = rag.agent("find alpha")
+    assert res.steps[0].action == "search_kb"
+    assert res.steps[0].observation != "(no results)"   # retrieved something
+    assert res.answer == "done"
+
+
+def test_agent_plain_text_is_taken_as_answer():
+    llm = ScriptLLM("It is 4.")             # no ACTION / no FINAL
+    rag = RAG(store=FakeStore(), embedder=FakeEmbedder(), llm=llm)
+    res = rag.agent("2+2?", include_search=False)
+    assert res.answer == "It is 4."
+    assert res.steps == []
+
+
+def test_agent_tool_error_is_observed_not_raised():
+    @tool
+    def boom(x: int) -> int:
+        "Always fails."
+        raise ValueError("nope")
+
+    llm = ScriptLLM(
+        'ACTION: boom\nACTION_INPUT: {"x": 1}',
+        "FINAL: handled",
+    )
+    rag = RAG(store=FakeStore(), embedder=FakeEmbedder(), llm=llm)
+    res = rag.agent("run boom", include_search=False)
+    assert "error calling boom" in res.steps[0].observation
+    assert res.answer == "handled"
+
+
 def test_normalize_doc_variants():
     assert ext.normalize_doc("hi").text == "hi"
     assert ext.normalize_doc({"text": "a", "source": "s"}).source == "s"

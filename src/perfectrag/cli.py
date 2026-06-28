@@ -201,6 +201,35 @@ def remove_cmd(
         raise typer.Exit(1)
 
 
+@app.command("export-tools")
+def export_tools_cmd(
+    from_files: list[str] = typer.Option(..., "--from", help="Extension file(s) defining @tool(s)"),
+    project_dir: Path = typer.Option(Path("."), "--project", "-p", help="Project dir (with mcp.yaml)"),
+    config: str = typer.Option("perfectrag.yml", "--config", "-c", help="Config for ctx-bound tools"),
+) -> None:
+    """Expose your @tool extensions as an MCP server and register it in mcp.yaml.
+
+    Lets a generated project's agentic backbone / Claude Code / Cursor call your tools.
+    """
+    from perfectrag.core import extensions as _ext
+    from perfectrag.mcp_tools import SERVER_FILENAME, export_tools_to_mcp
+
+    for f in from_files:
+        try:
+            _ext.load_extensions(f)
+        except Exception as e:
+            console.print(f"[red]Failed to load {f}: {e}[/red]")
+            raise typer.Exit(1)
+    tools = _ext.REGISTRY.names(_ext.TOOL)
+    if not tools:
+        console.print("[yellow]No @tool extensions found in the given file(s).[/yellow]")
+        raise typer.Exit(1)
+    mcp_path = export_tools_to_mcp(project_dir, list(from_files), config)
+    console.print(f"[green]Exposed {len(tools)} tool(s): {', '.join(tools)}[/green]")
+    console.print(f"[green]Wrote {SERVER_FILENAME} + added 'perfectrag-tools' to {mcp_path}[/green]")
+    console.print("[dim]Serve it: pip install fastmcp && python perfectrag_tools_server.py[/dim]")
+
+
 def _restore_template_vars(project_dir: Path) -> dict:
     """Rebuild recipe/hw/answers namespace for addon rendering in a post-scaffold project."""
     answers_file = project_dir / ".copier-answers.yml"
@@ -216,10 +245,13 @@ def _restore_template_vars(project_dir: Path) -> dict:
 
 @app.command("list")
 def list_cmd(
-    what: str = typer.Argument(..., help="'templates', 'mcp', 'skills', 'addons', 'installed', 'keys'"),
+    what: str = typer.Argument(..., help="'templates', 'mcp', 'skills', 'addons', 'extensions', 'installed', 'keys'"),
     project_dir: Path = typer.Option(Path("."), "--project", "-p", help="Project dir (for 'installed')"),
+    from_files: list[str] = typer.Option(
+        None, "--from", help="Extension file(s)/module(s) to load before listing (for 'extensions')",
+    ),
 ) -> None:
-    """List available templates / MCP / skills / addons / keys."""
+    """List available templates / MCP / skills / addons / extensions / keys."""
     if what == "templates":
         _list_templates()
     elif what == "mcp":
@@ -228,13 +260,48 @@ def list_cmd(
         _list_skills()
     elif what == "addons":
         _list_addons()
+    elif what == "extensions":
+        _list_extensions(from_files or [])
     elif what == "installed":
         _list_installed(project_dir)
     elif what == "keys":
         _list_provider_keys()
     else:
-        console.print(f"[red]Unknown: {what}. Use templates/mcp/skills/addons/installed/keys.[/red]")
+        console.print(f"[red]Unknown: {what}. Use templates/mcp/skills/addons/extensions/installed/keys.[/red]")
         raise typer.Exit(1)
+
+
+def _list_extensions(from_files: list[str]) -> None:
+    """Load extension files (+ entry points), then print the registry."""
+    from perfectrag.core import extensions as _ext
+    loaded_err = []
+    for f in from_files:
+        try:
+            _ext.load_extensions(f)
+        except Exception as e:  # surface bad files but keep going
+            loaded_err.append(f"{f}: {e}")
+    try:
+        _ext.load_entry_point_extensions()
+    except Exception:
+        pass
+    summary = _ext.REGISTRY.summary()
+    total = sum(len(v) for v in summary.values())
+    table = Table(title=f"Registered extensions ({total})")
+    table.add_column("Kind", style="cyan")
+    table.add_column("Name", style="bold")
+    table.add_column("Description")
+    table.add_column("Params", style="dim")
+    for kind in _ext.KINDS:
+        for e in _ext.REGISTRY.all(kind):
+            params = ", ".join(e.params) or "—"
+            table.add_row(kind, e.name, (e.description or "")[:60], params)
+    if total == 0:
+        console.print("[yellow]No extensions registered.[/yellow] "
+                      "Load some with [cyan]--from ./my_ext.py[/cyan].")
+    else:
+        console.print(table)
+    for err in loaded_err:
+        console.print(f"[red]Failed to load {err}[/red]")
 
 
 def _list_provider_keys() -> None:

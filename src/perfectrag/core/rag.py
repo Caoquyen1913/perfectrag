@@ -328,6 +328,16 @@ class RAG:
         """Everything currently registered, grouped by kind."""
         return ext.REGISTRY.summary()
 
+    def agent(self, question: str, *, max_steps: int = 5,
+              tools: list[str] | None = None, include_search: bool = True,
+              max_tokens: int = 512):
+        """Answer with a ReAct loop that can call registered ``@tool`` functions
+        (plus a built-in ``search_kb``). Returns an ``AgentResult`` (answer + steps).
+        """
+        from perfectrag.core.agent import run_agent
+        return run_agent(self, question, max_steps=max_steps, tools=tools,
+                         include_search=include_search, max_tokens=max_tokens)
+
     def _default_retrieve(self, question: str, k: int | None = None) -> list[Hit]:
         k = k or self.top_k
         retrieval_k = k * 3 if self.reranker else k
