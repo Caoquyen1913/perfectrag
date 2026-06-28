@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.3
+
+### Docs
+- New **octopus mascot logo** (`assets/logo.png` mark + `assets/logo-wordmark.png`);
+  the wordmark is now the README hero and the social card uses the octopus.
+- Fixed README links to absolute GitHub URLs so they resolve on the PyPI page.
+
 ## 1.3.2
 
 ### Docs
