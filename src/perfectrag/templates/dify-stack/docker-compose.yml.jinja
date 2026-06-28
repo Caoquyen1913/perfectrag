@@ -11,6 +11,15 @@ x-shared-env: &shared-api-worker-env
   REDIS_HOST: redis
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD}
+  # Run DB migrations on api startup — without this the schema is never created
+  # and every console call fails with `relation "dify_setups" does not exist`.
+  MIGRATION_ENABLED: "true"
+  # Celery broker/result backend. Without an explicit broker the worker falls
+  # back to amqp://guest@127.0.0.1:5672 (RabbitMQ, not in this stack) and dies
+  # with "Connection refused". Point it at Redis.
+  CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+  CELERY_BACKEND: redis
+  BROKER_USE_SSL: "false"
   VECTOR_STORE: qdrant
   QDRANT_URL: http://qdrant:6333
   STORAGE_TYPE: local
