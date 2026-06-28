@@ -1,10 +1,8 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/Caoquyen1913/perfectrag/HEAD/assets/social-card.png" alt="perfectRAG — answer a few questions, get a working RAG service" width="820">
+<img src="https://raw.githubusercontent.com/Caoquyen1913/perfectrag/HEAD/assets/logo-wordmark.png" alt="perfectRAG" width="640">
 
-# ⚡ perfectRAG
-
-### Stop gluing RAG docker-compose files by hand. Answer a few questions, get a working RAG service.
+### Stop gluing RAG docker-compose files by hand.
 
 **A RAG scaffolder _and_ an embedded Python library** — run it with Docker, without Docker, or as a SaaS API. Your hardware, your backbone, your call.
 
