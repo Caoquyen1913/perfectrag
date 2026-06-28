@@ -36,13 +36,26 @@ The web UI (:3000) serves and the data tier (Postgres/Vespa/Redis) comes up, but
    `alembic upgrade head && uvicorn onyx.main:app --host 0.0.0.0 --port 8080`.
 2. **`USER_AUTH_SECRET` unset** — api refuses to start: "USER_AUTH_SECRET is empty".
    Needs a generated secret in `.env` (`openssl rand -hex 32`).
-3. **Index drift (root cause): images are unpinned (`:latest`).** With the real
-   command + secret, migrations run but the api then fails connecting to a document
-   index on `localhost:9200` — current `onyx-backend:latest` expects **OpenSearch**,
-   while the template pins a **Vespa** `index` service. CLAUDE.md already requires
-   upstream images to be pinned; pin `onyx-backend` / `onyx-web-server` to a
-   Vespa-era tag (and add the command + secret), or switch the index to OpenSearch
-   to match `:latest`.
+3. **Index drift: images are unpinned (`:latest`).** With the real command + secret,
+   migrations run but `onyx-backend:latest` (v4.0.0+) expects **OpenSearch** (:9200)
+   while the template pins a **Vespa** `index` service. v3.x needs *both* Vespa and
+   OpenSearch (migration toolchain). Only **v2.x is Vespa-only**.
+4. **Definitive root cause — the api hard-requires a `model_server` (:9000).** Pinned
+   to v2.6.2 (Vespa-only) with a clean DB, the api gets past migrations + Vespa app
+   deploy, then crash-loops on `localhost:9000/api/gpu-status` — Onyx's inference
+   `model_server`, which the minimal scaffold does **not** include. Onyx's api cannot
+   start standalone without it.
 
-This was left as-is (documented "starting point, use upstream for the complete
-deployment") rather than committing a partial fix that would crash-loop the api.
+**Conclusion:** the minimal onyx scaffold (data tier + web UI) cannot fully boot the
+api_server without vendoring Onyx's complete upstream compose (model_server + indexing
+model server + background workers). That is out of scope for this intentionally-minimal
+"starting point" template, whose README already directs users to the upstream compose
+for the full deployment. Attempted fixes (pin to v2.6.2/v3.2.0, add api command, add
+USER_AUTH_SECRET) were **reverted** rather than ship a crash-looping config. Verified:
+web UI :3000 serves, and Postgres/Vespa/Redis come up healthy.
+
+**Recommended follow-up** (separate effort): either (a) keep onyx minimal but pin the
+images + make the api_server an explicit, documented placeholder (no port exposed, web
+shows a "configure upstream" note), or (b) vendor Onyx's full upstream compose as the
+template (model_server, indexing_model_server, background, OpenSearch) and pin all to a
+single release.
