@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.1
+
+Theme: **template fixes from a full live `docker compose up` test pass.**
+
+### Fixed
+- **code-graph-rag**: memgraph crash-looped (exit 12) on a root-owned host bind-mount → switched to a named volume.
+- **r2r-stack**: (a) `R2R_PROJECT_NAME` took the raw project dir name, so a hyphen crashed Postgres table creation (`syntax error at or near "-"`) → sanitized to underscores; (b) R2R listened on `:8000` but compose mapped `7272:7272` → pinned `R2R_PORT=7272`.
+- **dify-stack**: (a) `MIGRATION_ENABLED` unset → no DB schema, every console call 500 (`relation "dify_setups" does not exist`); (b) `CELERY_BROKER_URL` unset → worker fell back to amqp/RabbitMQ and crashed → pointed broker/result backend at Redis.
+
+### Docs
+- `docs/stack-testing-findings.md`: per-stack live-boot results (6/7 booted) + the onyx api_server limitation (needs the upstream-complete deployment incl. model_server) + the host-disk workflow.
+
 ## 1.3.0
 
 Theme: **help users pick the right config — measure, don't guess.**
