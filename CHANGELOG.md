@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.2
+
+### Docs
+- Reworked README (hero, badges, pipeline diagram, tighter tables) and added the
+  Apache-2.0 `LICENSE` file. Patch release so the refreshed README ships as the
+  PyPI project description (1.3.1 was built before the rewrite).
+
 ## 1.3.1
 
 Theme: **template fixes from a full live `docker compose up` test pass.**
