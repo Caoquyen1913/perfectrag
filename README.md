@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="https://raw.githubusercontent.com/Caoquyen1913/perfectrag/HEAD/assets/social-card.png" alt="perfectRAG — answer a few questions, get a working RAG service" width="820">
+
 # ⚡ perfectRAG
 
 ### Stop gluing RAG docker-compose files by hand. Answer a few questions, get a working RAG service.
