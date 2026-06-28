@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
+
+Theme: **perfectRAG becomes a pluggable framework.** Add your own data sources,
+retrieval, tools, and an agent loop with one decorator — then export your tools to MCP.
 
 ### Added
 - **Decorator-based extension framework** — turn perfectRAG into a pluggable framework

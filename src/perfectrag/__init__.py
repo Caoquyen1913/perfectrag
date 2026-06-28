@@ -1,6 +1,6 @@
 """perfectRAG — dynamic RAG framework scaffolder + embedded Python library."""
 
-__version__ = "1.3.3"
+__version__ = "1.4.0"
 
 # Top-level exports for library mode:
 #   from perfectrag import RAG, inject, retrieve, transform, tool, skill, Document

@@ -41,6 +41,11 @@ llm:
 
 parser:
   name: markitdown
+
+# Optional — plug in your own extensions (see Extend it, below)
+extensions: [./my_extensions.py]
+retriever: my_hybrid
+transforms: [dedupe, boost_recent]
 ```
 
 ## Python API
@@ -64,6 +69,30 @@ for ev, payload in rag.stream("Explain in 3 bullets"):
     if ev == "token":
         print(payload, end="", flush=True)
 ```
+
+## Extend it — decorators
+
+perfectrag is a pluggable framework. Add custom data sources, retrieval, tools, and an
+agent loop with one decorator:
+
+```python
+from perfectrag import inject, transform, tool, Document
+
+@inject("notion")
+def notion(database_id: str):
+    yield Document(text=..., source=f"notion:{...}")
+
+@tool
+def calculator(expression: str) -> str:
+    "Evaluate a basic arithmetic expression."
+    return str(eval(expression, {"__builtins__": {}}, {}))
+
+rag.ingest_from("notion", database_id="…")
+rag.agent("What is 12×9, and what do the docs say about CRAG?")   # ReAct tool-calling
+rag.call_tool("calculator", expression="2+2")
+```
+
+Full guide: **[extensions.md](extensions.md)** · runnable starter: [`examples/my_extensions.py`](../examples/my_extensions.py).
 
 ## CLI
 
