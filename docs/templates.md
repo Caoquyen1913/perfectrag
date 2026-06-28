@@ -67,6 +67,13 @@ Enterprise connector-based search (Slack/Drive/GitHub/Confluence, permission-awa
 - **Backbone**: [Onyx](https://github.com/onyx-dot-app/onyx) (ex-Danswer)
 - **Services**: Postgres, Vespa, Redis, Onyx api/web; README points to the upstream compose for production
 - **When to choose**: "chat over company data" instead of PDF upload (opt-in via `--template onyx-stack`)
+- **Heads-up**: this is a **minimal starting point** — the web UI + data tier boot, but Onyx's `api_server` needs additional services (a `model_server`, indexing model server, background workers) to fully start. For a working deployment, vendor Onyx's [upstream compose](https://github.com/onyx-dot-app/onyx/tree/main/deployment/docker_compose). See [stack-testing-findings.md](stack-testing-findings.md).
+
+## Stack-boot test status
+
+All seven templates' compose files are validated, and the stacks were live-booted
+to verify the generated config. See **[stack-testing-findings.md](stack-testing-findings.md)**
+for per-stack results (UI / logs / MCP) and the fixes that came out of it.
 
 ## Contribute a template
 
