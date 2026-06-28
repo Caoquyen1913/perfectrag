@@ -13,8 +13,11 @@ services:
     ports:
       - "7687:7687"   # Bolt protocol
     command: ["--telemetry-enabled=false", "--log-level=WARNING"]
+    # Named volume (not a host bind-mount): Memgraph runs as user `memgraph` and
+    # cannot write to a freshly-created root-owned host dir, which crash-loops the
+    # container (exit 12). A named volume inherits the image's correct ownership.
     volumes:
-      - ./volumes/memgraph:/var/lib/memgraph
+      - memgraph_data:/var/lib/memgraph
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/7687"]
       interval: 10s
@@ -30,3 +33,6 @@ services:
     environment:
       - QUICK_CONNECT_MG_HOST=memgraph
       - QUICK_CONNECT_MG_PORT=7687
+
+volumes:
+  memgraph_data:
