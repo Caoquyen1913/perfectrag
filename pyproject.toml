@@ -82,8 +82,8 @@ dev = [
 perfectrag = "perfectrag.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/your-org/perfectrag"
-Issues = "https://github.com/your-org/perfectrag/issues"
+Homepage = "https://github.com/Caoquyen1913/perfectrag"
+Issues = "https://github.com/Caoquyen1913/perfectrag/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/perfectrag"]

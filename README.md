@@ -8,9 +8,9 @@
 
 [![PyPI](https://img.shields.io/pypi/v/perfectrag?color=4c8bf5&label=pypi)](https://pypi.org/project/perfectrag/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)](https://pypi.org/project/perfectrag/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-153%20passing-brightgreen)](tests/)
-[![Backbones](https://img.shields.io/badge/backbones-7-orange)](docs/templates.md)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/LICENSE)
+[![Tests](https://img.shields.io/badge/tests-153%20passing-brightgreen)](https://github.com/Caoquyen1913/perfectrag/tree/HEAD/tests)
+[![Backbones](https://img.shields.io/badge/backbones-7-orange)](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/templates.md)
 
 </div>
 
@@ -89,7 +89,7 @@ perfectrag up
 | `r2r-stack` | All-in-one agentic RAG | [R2R](https://github.com/SciPhi-AI/R2R) |
 | `onyx-stack` | Enterprise connector search | [Onyx](https://github.com/onyx-dot-app/onyx) |
 
-> The wizard auto-routes to the right one (GraphRAG → LightRAG, code → code-graph-rag, …) — or force any with `--template`. Bring your own via `[project.entry-points."perfectrag.templates"]`; users get it after `pip install`. See [docs/templates.md](docs/templates.md).
+> The wizard auto-routes to the right one (GraphRAG → LightRAG, code → code-graph-rag, …) — or force any with `--template`. Bring your own via `[project.entry-points."perfectrag.templates"]`; users get it after `pip install`. See [docs/templates.md](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/templates.md).
 
 ## 🎯 Advanced retrieval — measure, don't guess
 
@@ -109,7 +109,7 @@ perfectrag tune --docs ./docs --golden ./golden.jsonl --apply   # benchmarks eac
 perfectrag eval --retrieval -d golden.jsonl --gate              # recall@k / MRR / nDCG as a CI gate — no Docker
 ```
 
-See [docs/retrieval.md](docs/retrieval.md).
+See [docs/retrieval.md](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/retrieval.md).
 
 ## 🛠️ Commands
 
@@ -142,7 +142,7 @@ One-flag overlays that `perfectrag up` auto-merges (`compose.<name>.yml`):
 | `notion-sync` · `gdrive-sync` · `confluence-sync` | Sources → vector store | official SDKs |
 | `paperclip` | Multi-agent orchestrator | [Paperclip](https://github.com/paperclipai/paperclip) |
 
-See [docs/addons.md](docs/addons.md).
+See [docs/addons.md](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/addons.md).
 
 ## 🖥️ Browser wizard
 
@@ -154,7 +154,7 @@ perfectrag web                        # backend on :7777
 cd ui && pnpm install && pnpm dev     # UI on :3001
 ```
 
-See [docs/ui.md](docs/ui.md).
+See [docs/ui.md](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/ui.md).
 
 ## ☁️ Deploy to production
 
@@ -163,15 +163,15 @@ perfectrag deploy helm --project ./my-rag --out ./chart
 helm lint ./chart && helm install my-rag ./chart
 ```
 
-Also renders `flyio` and `railway` assets. See [docs/deploy.md](docs/deploy.md).
+Also renders `flyio` and `railway` assets. See [docs/deploy.md](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/deploy.md).
 
 ## 📚 Docs
 
-[Retrieval](docs/retrieval.md) · [Code intelligence](docs/code-graph.md) · [Templates](docs/templates.md) · [Addons](docs/addons.md) · [Eval](docs/eval.md) · [Observability](docs/observability.md) · [Deploy](docs/deploy.md) · [Browser UI](docs/ui.md) · [MCP registry](docs/mcp.md) · [Skills](docs/skills.md) · [Stack-boot test findings](docs/stack-testing-findings.md) · [Changelog](CHANGELOG.md)
+[Retrieval](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/retrieval.md) · [Code intelligence](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/code-graph.md) · [Templates](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/templates.md) · [Addons](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/addons.md) · [Eval](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/eval.md) · [Observability](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/observability.md) · [Deploy](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/deploy.md) · [Browser UI](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/ui.md) · [MCP registry](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/mcp.md) · [Skills](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/skills.md) · [Stack-boot test findings](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/docs/stack-testing-findings.md) · [Changelog](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/CHANGELOG.md)
 
 ## 📄 License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](https://github.com/Caoquyen1913/perfectrag/blob/HEAD/LICENSE)
 
 <div align="center">
 <sub>Built for people who want a working RAG stack, not a weekend of YAML.</sub>
