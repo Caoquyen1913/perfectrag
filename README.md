@@ -1,49 +1,73 @@
-# perfectRAG
+<div align="center">
 
-> RAG scaffolder **+ embedded Python library**. Run with Docker, without Docker, or as a SaaS API — your choice.
+# ⚡ perfectRAG
 
-**v1.2 adds**: 3 new backbones (`code-graph-rag` for Claude Code, `r2r-stack`, `onyx-stack` → 7 total), advanced retrieval in the library (Contextual Retrieval, parent-document, query-expansion + RRF, Corrective RAG), a retrieval-quality eval gate (`eval --retrieval`), a scored advisor, and 6 new wizard questions. See the [changelog](CHANGELOG.md).
+### Stop gluing RAG docker-compose files by hand. Answer a few questions, get a working RAG service.
 
-**v1.1**: Docker-free local mode (`from perfectrag import RAG`), full component matrix (5 vector DBs × 5 embeddings × 4 rerankers × 6 LLM runtimes), Gemini advisor, and a built-in OpenAI-style Query API with bearer auth + rate limit.
+**A RAG scaffolder _and_ an embedded Python library** — run it with Docker, without Docker, or as a SaaS API. Your hardware, your backbone, your call.
 
-## Three ways to use it
+[![PyPI](https://img.shields.io/pypi/v/perfectrag?color=4c8bf5&label=pypi)](https://pypi.org/project/perfectrag/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)](https://pypi.org/project/perfectrag/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-153%20passing-brightgreen)](tests/)
+[![Backbones](https://img.shields.io/badge/backbones-7-orange)](docs/templates.md)
+
+</div>
+
+---
+
+`perfectrag` detects your hardware, asks what you're building, picks an opinionated recipe, and renders a **complete project** — `docker-compose.yml` + `.env` + `mcp.yaml` + `skills/` — wrapping one of **7 open-source RAG backbones**. Run `perfectrag up` and you have a RAG service + UI. No YAML archaeology.
+
+Don't want Docker? The same engine ships as a pip-installable library: `from perfectrag import RAG`.
+
+## ✨ Three ways to use it
 
 ```python
-# 1. Embedded Python library (no Docker)
+# 1️⃣  Embedded Python library — zero Docker
 from perfectrag import RAG
+
 rag = RAG.from_config("perfectrag.yml")
 rag.ingest("./docs")
 print(rag.query("What is RAG?").answer)
 ```
 
 ```bash
-# 2. Scaffolded docker-compose stack (same config, same API)
+# 2️⃣  Scaffolded docker-compose stack — same config, same API
 perfectrag init my-rag
 cd my-rag && perfectrag up
+```
 
-# 3. SaaS API for external clients
+```bash
+# 3️⃣  SaaS API for external clients — bearer auth + rate limit built in
 perfectrag key issue --name "prod app" --rate 100 -p .
 curl -H "Authorization: Bearer sk-rag-..." \
   -d '{"question":"..."}' http://localhost:8000/v1/query
 ```
 
-Instead of gluing RAGFlow/Dify/LightRAG docker-compose files by hand, `perfectrag`:
+## 🧠 How it works
 
-1. **Detects hardware** (CPU / NVIDIA / Apple Silicon / AMD) + VRAM tier.
-2. **Asks use-case questions** (Q&A / GraphRAG / agent / multimodal / code / web).
-3. **Picks a recipe** (LLM + embedding + reranker + vector DB + parser) tuned to your hardware.
-4. **Scaffolds a full project** (`docker-compose.yml` + `.env` + `mcp.yaml` + `skills/` + optional addons).
-5. **Orchestrates** with `perfectrag up / doctor / logs / eval / deploy`.
-6. **Ships a browser wizard** (Next.js) if you'd rather click than type.
+Five pure stages, from bare metal to a running stack:
 
-## Install
-
-```bash
-pip install perfectrag           # CLI + core
-pip install 'perfectrag[web]'    # + FastAPI backend for Next.js UI
+```
+   detect hardware  →  ask use-case  →  pick recipe  →  scaffold  →  orchestrate
+   CPU/GPU/Apple       Q&A/graph/         LLM+embed+      compose+     up · doctor ·
+   + VRAM tier         agent/code         reranker+db     env+mcp      logs · eval · deploy
 ```
 
-## Quickstart — the one-liner
+1. **Detects hardware** — CPU / NVIDIA / Apple Silicon / AMD, with a VRAM tier.
+2. **Asks use-case questions** — Q&A · GraphRAG · agent · multimodal · code · web.
+3. **Picks a recipe** — LLM + embedding + reranker + vector DB + parser, tuned to your tier.
+4. **Scaffolds a full project** — `docker-compose.yml` + `.env` + `mcp.yaml` + `skills/` + optional addons.
+5. **Orchestrates** — `perfectrag up / doctor / logs / eval / deploy`, or a **Next.js browser wizard** if you'd rather click than type.
+
+## 📦 Install
+
+```bash
+pip install perfectrag           # CLI + embedded library
+pip install 'perfectrag[web]'    # + FastAPI backend for the Next.js UI
+```
+
+## 🚀 Quickstart — the one-liner
 
 ```bash
 perfectrag init my-rag --with eval,observability,paperclip
@@ -51,9 +75,43 @@ cd my-rag
 perfectrag up
 ```
 
-That gives you a RAG service, eval dashboard, observability gateway, and multi-agent orchestrator running on localhost in one shot.
+…and you have a RAG service, an eval dashboard, an observability gateway, and a multi-agent orchestrator running on localhost — in one shot.
 
-## Commands
+## 🧩 The 7 backbones
+
+| Template | Best for | Backbone |
+|---|---|---|
+| `custom-naive-rag` | Learning · CPU-only · tiny corpus | FastAPI + Qdrant + Ollama + open-webui |
+| `ragflow-stack` | Production Q&A · hybrid search · agentic | [RAGFlow](https://github.com/infiniflow/ragflow) |
+| `lightrag-stack` | GraphRAG · multi-hop reasoning | [LightRAG](https://github.com/HKUDS/LightRAG) |
+| `dify-stack` | Workflow / agent builder · no-code teams | [Dify](https://github.com/langgenius/dify) |
+| `code-graph-rag` | Code intelligence for AI coding agents | Serena (LSP) + ast-grep MCP (+ Memgraph) |
+| `r2r-stack` | All-in-one agentic RAG | [R2R](https://github.com/SciPhi-AI/R2R) |
+| `onyx-stack` | Enterprise connector search | [Onyx](https://github.com/onyx-dot-app/onyx) |
+
+> The wizard auto-routes to the right one (GraphRAG → LightRAG, code → code-graph-rag, …) — or force any with `--template`. Bring your own via `[project.entry-points."perfectrag.templates"]`; users get it after `pip install`. See [docs/templates.md](docs/templates.md).
+
+## 🎯 Advanced retrieval — measure, don't guess
+
+The embedded library ships techniques you toggle in `perfectrag.yml` (the wizard turns them on based on your answers):
+
+| Technique | Config | When it helps |
+|---|---|---|
+| Contextual Retrieval | `contextual: true` | recall on terse chunks (needs a capable LLM) |
+| Parent-document | `parent_chunk_size: 2048` | precise match + richer context, free |
+| Query expansion + RRF | `query_expansion: 3` | terse / multi-hop queries |
+| Corrective RAG (CRAG) | `corrective: true` | re-retrieve when results look off |
+
+Then let the data decide which to keep:
+
+```bash
+perfectrag tune --docs ./docs --golden ./golden.jsonl --apply   # benchmarks each technique on YOUR corpus, writes the winner
+perfectrag eval --retrieval -d golden.jsonl --gate              # recall@k / MRR / nDCG as a CI gate — no Docker
+```
+
+See [docs/retrieval.md](docs/retrieval.md).
+
+## 🛠️ Commands
 
 | Command | What it does |
 |---|---|
@@ -63,50 +121,17 @@ That gives you a RAG service, eval dashboard, observability gateway, and multi-a
 | `perfectrag add mcp/skill/addon <name>` | Extend a generated project |
 | `perfectrag up / down / logs / doctor` | Orchestrate the generated project |
 | `perfectrag eval --dataset qa.jsonl` | Generation metrics — RAGAS + DeepEval (needs `eval` addon) |
-| `perfectrag eval --retrieval -d golden.jsonl --gate` | Retrieval metrics (recall@k/MRR/nDCG) + CI gate, no Docker |
+| `perfectrag eval --retrieval -d golden.jsonl --gate` | Retrieval metrics + CI gate, no Docker |
 | `perfectrag tune --docs ./docs --golden g.jsonl --apply` | Auto-pick the best retrieval technique **on your data** |
 | `perfectrag advise "..."` | Scored, evaluative recipe recommendation |
 | `perfectrag deploy helm/flyio/railway` | Render production deploy assets |
-| `perfectrag web` | Start FastAPI backend for Next.js UI |
+| `perfectrag web` | Start the FastAPI backend for the Next.js UI |
 | `perfectrag list templates/mcp/skills/addons/installed` | Show catalogues |
 | `perfectrag hw` | Show detected hardware + tier |
 
-## Templates (7)
+## 🔌 Addons
 
-| Template | Use-case | Backbone |
-|---|---|---|
-| `custom-naive-rag` | Learning / CPU-only / tiny corpus | FastAPI + Qdrant + Ollama + open-webui |
-| `ragflow-stack` | Production Q&A + hybrid search + agentic | [RAGFlow](https://github.com/infiniflow/ragflow) |
-| `lightrag-stack` | GraphRAG / multi-hop reasoning | [LightRAG](https://github.com/HKUDS/LightRAG) |
-| `dify-stack` | Workflow / agent / no-code team | [Dify](https://github.com/langgenius/dify) |
-| `code-graph-rag` | Code intelligence for Claude Code | Serena (LSP) + ast-grep MCP (+ Memgraph) |
-| `r2r-stack` | Production all-in-one + agentic RAG | [R2R](https://github.com/SciPhi-AI/R2R) |
-| `onyx-stack` | Enterprise connector search | [Onyx](https://github.com/onyx-dot-app/onyx) |
-
-Third-party templates: publish via `[project.entry-points."perfectrag.templates"]` — users get them after `pip install`.
-
-## Advanced retrieval (v1.2)
-
-The embedded library supports techniques you enable in `perfectrag.yml` (the wizard
-turns them on automatically based on your answers):
-
-| Technique | Config | When it helps |
-|---|---|---|
-| Contextual Retrieval | `contextual: true` | recall on terse chunks (needs a capable LLM) |
-| Parent-document | `parent_chunk_size: 2048` | precise match + richer context, free |
-| Query expansion + RRF | `query_expansion: 3` | terse / multi-hop queries |
-| Corrective RAG (CRAG) | `corrective: true` | re-retrieve when results look off |
-
-Don't guess which to enable — **measure on your own data**:
-
-```bash
-perfectrag tune --docs ./docs --golden ./golden.jsonl --apply   # picks + writes the best config
-perfectrag eval --retrieval -d golden.jsonl --gate              # CI gate on retrieval quality
-```
-
-See [docs/retrieval.md](docs/retrieval.md).
-
-## Addons (v1.0)
+One-flag overlays that `perfectrag up` auto-merges (`compose.<name>.yml`):
 
 | Addon | Purpose | Based on |
 |---|---|---|
@@ -114,48 +139,40 @@ See [docs/retrieval.md](docs/retrieval.md).
 | `observability` | LLM gateway + tracing | LiteLLM, Langfuse |
 | `context-eng` | Prompt compression + memory | DSPy, LLMLingua, mem0 |
 | `ingest-worker` | Scheduled web crawl → vector store | Crawl4AI |
-| `notion-sync` | Notion → vector store | notion-client |
-| `gdrive-sync` | Google Drive → vector store | google-api-python-client |
-| `confluence-sync` | Confluence → vector store | atlassian-python-api |
+| `notion-sync` · `gdrive-sync` · `confluence-sync` | Sources → vector store | official SDKs |
 | `paperclip` | Multi-agent orchestrator | [Paperclip](https://github.com/paperclipai/paperclip) |
 
-Each addon is a `compose.<name>.yml` overlay that `perfectrag up` auto-merges. See [docs/addons.md](docs/addons.md).
+See [docs/addons.md](docs/addons.md).
 
-## Browser wizard
+## 🖥️ Browser wizard
+
+Prefer clicking to typing?
 
 ```bash
 pip install 'perfectrag[web]'
-perfectrag web           # backend on :7777
-
-# in another terminal
-cd ui && pnpm install && pnpm dev    # UI on :3001
+perfectrag web                        # backend on :7777
+cd ui && pnpm install && pnpm dev     # UI on :3001
 ```
 
 See [docs/ui.md](docs/ui.md).
 
-## Deploy to production
+## ☁️ Deploy to production
 
 ```bash
 perfectrag deploy helm --project ./my-rag --out ./chart
-helm lint ./chart
-helm install my-rag ./chart
+helm lint ./chart && helm install my-rag ./chart
 ```
 
-Also supports `flyio` and `railway`. See [docs/deploy.md](docs/deploy.md).
+Also renders `flyio` and `railway` assets. See [docs/deploy.md](docs/deploy.md).
 
-## Docs
+## 📚 Docs
 
-- [Advanced retrieval](docs/retrieval.md)
-- [Code intelligence (code-graph-rag)](docs/code-graph.md)
-- [Addons](docs/addons.md)
-- [Eval](docs/eval.md)
-- [Observability](docs/observability.md)
-- [Deploy](docs/deploy.md)
-- [Browser UI](docs/ui.md)
-- [Templates](docs/templates.md)
-- [MCP registry](docs/mcp.md)
-- [Skills](docs/skills.md)
+[Retrieval](docs/retrieval.md) · [Code intelligence](docs/code-graph.md) · [Templates](docs/templates.md) · [Addons](docs/addons.md) · [Eval](docs/eval.md) · [Observability](docs/observability.md) · [Deploy](docs/deploy.md) · [Browser UI](docs/ui.md) · [MCP registry](docs/mcp.md) · [Skills](docs/skills.md) · [Stack-boot test findings](docs/stack-testing-findings.md) · [Changelog](CHANGELOG.md)
 
-## License
+## 📄 License
 
-Apache-2.0
+[Apache-2.0](LICENSE)
+
+<div align="center">
+<sub>Built for people who want a working RAG stack, not a weekend of YAML.</sub>
+</div>
